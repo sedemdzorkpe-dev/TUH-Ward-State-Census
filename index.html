@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TUH Ward Census — Tema Urban Hospital</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, getDocs, getDoc, setDoc,
+  updateDoc, deleteDoc, doc, query, where, orderBy,
+  onSnapshot, serverTimestamp, writeBatch
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDh1-e1pvMvB6gxLvvXEFY7ZzxWibyOYlc",
+  authDomain: "tuh-ward-state-v2.firebaseapp.com",
+  projectId: "tuh-ward-state-v2",
+  storageBucket: "tuh-ward-state-v2.firebasestorage.app",
+  messagingSenderId: "79556485415",
+  appId: "1:79556485415:web:a27833757c19eef08dc902"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+window.__fb = {
+  db, collection, addDoc, getDocs, getDoc, setDoc,
+  updateDoc, deleteDoc, doc, query, where, orderBy,
+  onSnapshot, serverTimestamp, writeBatch
+};
+window.dispatchEvent(new Event('fb-ready'));
+</script>
+
+<style>
+:root{
+  --t950:#0B2E2B; --t900:#0B4F4A; --t800:#125E58; --t700:#1B7A72;
+  --t100:#D8EAE7; --t50:#EFF7F5;
+  --parch:#FAF6EE; --parch2:#F1EADA; --card:#FFFFFF;
+  --ink:#1E2422; --soft:#5C6B67; --line:#E3DCC9;
+  --sage:#7FA88B; --sage-bg:#E9F1EC;
+  --amber:#E0A526; --amber-bg:#FCF1DA;
+  --clay:#B5453A; --clay-bg:#FAE7E4;
+  --blue:#3D6B8C; --blue-bg:#E5EEF4;
+  --r:14px; --rsm:9px;
+  --sh:0 4px 18px rgba(11,47,43,.08);
+  --shlg:0 14px 44px rgba(11,47,43,.16);
+  --serif:'Source Serif 4',serif;
+  --sans:'Inter',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--sans);background:var(--parch);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased}
+.hidden{display:none!important}
+button{font-family:inherit;cursor:pointer}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
+
+/* ── LOGIN ── */
+#login-page{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:20px;position:relative;overflow:hidden;
+  background:radial-gradient(circle at 15% 20%,rgba(127,168,139,.2) 0%,transparent 45%),
+             radial-gradient(circle at 88% 78%,rgba(224,165,38,.15) 0%,transparent 50%),
+             linear-gradient(155deg,var(--t950) 0%,var(--t900) 55%,var(--t800) 100%);
+}
+#login-page::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background-image:
+    repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0,rgba(255,255,255,.03) 1px,transparent 1px,transparent 44px),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0,rgba(255,255,255,.03) 1px,transparent 1px,transparent 44px);
+}
+.login-shell{
+  position:relative;z-index:1;display:grid;grid-template-columns:1.1fr 1fr;
+  max-width:900px;width:100%;background:var(--card);border-radius:20px;
+  overflow:hidden;box-shadow:var(--shlg);
+}
+@media(max-width:720px){.login-shell{grid-template-columns:1fr}}
+.lbrand{
+  background:linear-gradient(165deg,var(--t900),var(--t700));
+  color:#fff;padding:48px 40px;display:flex;flex-direction:column;
+  justify-content:space-between;min-height:360px;
+}
+@media(max-width:720px){.lbrand{min-height:auto;padding:32px 28px}}
+.lbrand .crest{
+  width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.12);
+  border:1.5px solid rgba(255,255,255,.28);display:flex;align-items:center;
+  justify-content:center;font-family:var(--serif);font-weight:700;font-size:18px;
+  margin-bottom:20px;
+}
+.lbrand h1{font-family:var(--serif);font-size:clamp(1.5rem,3.5vw,2rem);font-weight:700;line-height:1.2}
+.lbrand .sub{margin-top:10px;font-size:.88rem;color:rgba(255,255,255,.68);line-height:1.65;max-width:300px}
+.lbrand .tag{
+  font-family:var(--mono);font-size:.68rem;letter-spacing:1.4px;text-transform:uppercase;
+  color:var(--amber);margin-top:auto;padding-top:20px;
+  border-top:1px solid rgba(255,255,255,.12);
+}
+.lform{padding:48px 40px;display:flex;flex-direction:column;justify-content:center}
+@media(max-width:720px){.lform{padding:32px 28px}}
+.lform h2{font-family:var(--serif);font-size:1.35rem;font-weight:700;color:var(--t900)}
+.lform .lead{font-size:.84rem;color:var(--soft);margin:6px 0 24px}
+
+.field{margin-bottom:15px}
+.field label{display:block;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t800);margin-bottom:6px}
+.field input,.field select{
+  width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:var(--rsm);
+  font-size:.93rem;font-family:var(--sans);background:var(--parch);color:var(--ink);
+  transition:border-color .15s,background .15s;
+}
+.field input:focus,.field select:focus{outline:none;border-color:var(--t700);background:#fff;box-shadow:0 0 0 3px rgba(27,122,114,.11)}
+.pw-wrap{position:relative}
+.pw-toggle{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  background:none;border:none;font-size:.72rem;font-weight:700;color:var(--soft);letter-spacing:.4px;
+}
+
+/* ── BUTTONS ── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:11px 18px;border-radius:var(--rsm);border:none;
+  font-family:var(--sans);font-weight:700;font-size:.88rem;letter-spacing:.2px;
+  transition:transform .1s,box-shadow .15s,background .15s,color .15s,border-color .15s;
+}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--t900);color:#fff}
+.btn-primary:hover{background:var(--t800);box-shadow:0 5px 16px rgba(11,79,74,.28)}
+.btn-full{width:100%;padding:13px}
+.btn-ghost{background:transparent;color:var(--t800);border:1.5px solid var(--line)}
+.btn-ghost:hover{border-color:var(--t700);background:var(--t50)}
+.btn-amber{background:var(--amber);color:#3A2904}
+.btn-amber:hover{background:#cf9621}
+.btn-clay{background:var(--clay);color:#fff}
+.btn-clay:hover{background:#9c3a31}
+.btn-sm{padding:7px 13px;font-size:.78rem;border-radius:8px}
+
+.lerr{
+  background:var(--clay-bg);border:1.5px solid #f2c4be;color:var(--clay);
+  border-radius:var(--rsm);padding:10px 13px;font-size:.83rem;font-weight:600;
+  margin-top:13px;display:flex;align-items:center;gap:8px;
+}
+.lmeta{margin-top:18px;font-size:.77rem;color:var(--soft);text-align:center}
+.lmeta a{color:var(--t700);font-weight:700;cursor:pointer}
+
+/* ── APP SHELL ── */
+#app-shell{display:none;min-height:100vh}
+#app-shell.active{display:flex}
+
+.sidebar{
+  width:244px;flex-shrink:0;
+  background:linear-gradient(180deg,var(--t950),var(--t900));
+  color:#fff;display:flex;flex-direction:column;
+  position:sticky;top:0;height:100vh;overflow-y:auto;z-index:50;
+}
+.sb-head{padding:22px 18px 16px;border-bottom:1px solid rgba(255,255,255,.07)}
+.sb-head .crest{
+  width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.1);
+  border:1.5px solid rgba(255,255,255,.22);display:flex;align-items:center;
+  justify-content:center;font-family:var(--serif);font-weight:700;font-size:14px;margin-bottom:10px;
+}
+.sb-head h1{font-family:var(--serif);font-size:.98rem;font-weight:700;line-height:1.3}
+.role-tag{
+  display:inline-block;margin-top:7px;font-family:var(--mono);font-size:.64rem;
+  letter-spacing:1.1px;text-transform:uppercase;color:var(--amber);
+  background:rgba(224,165,38,.12);border:1px solid rgba(224,165,38,.28);
+  padding:3px 8px;border-radius:5px;
+}
+.nav-grp{padding:12px 10px}
+.nav-lbl{font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.32);padding:7px 10px 5px}
+.nav-link{
+  display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;
+  color:rgba(255,255,255,.7);font-size:.84rem;font-weight:600;
+  border:none;background:none;width:100%;text-align:left;font-family:inherit;
+  transition:background .14s,color .14s;margin-bottom:1px;
+}
+.nav-link:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-link.active{background:var(--amber);color:#3A2904}
+.nav-link .ic{width:17px;text-align:center;flex-shrink:0;font-size:.9rem}
+.sb-foot{margin-top:auto;padding:14px;border-top:1px solid rgba(255,255,255,.07)}
+.user-pill{
+  display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:9px;
+  background:rgba(255,255,255,.05);margin-bottom:7px;
+}
+.user-pill .av{
+  width:30px;height:30px;border-radius:50%;background:var(--t700);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem;flex-shrink:0;
+}
+.user-pill .meta .nm{font-size:.78rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
+.user-pill .meta .ut{font-size:.67rem;color:rgba(255,255,255,.48);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
+
+.main{flex:1;min-width:0;min-height:100vh;display:flex;flex-direction:column}
+.topbar{
+  background:var(--card);border-bottom:1px solid var(--line);
+  padding:14px 26px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:40;gap:12px;flex-wrap:wrap;
+}
+.topbar h2{font-family:var(--serif);font-size:1.25rem;font-weight:700;color:var(--t900)}
+.topbar .desc{font-size:.78rem;color:var(--soft);margin-top:2px}
+.topbar-r{display:flex;align-items:center;gap:10px}
+#mob-btn{display:none;background:none;border:1.5px solid var(--line);border-radius:8px;padding:7px 10px;font-size:.95rem}
+
+@media(max-width:860px){
+  .sidebar{position:fixed;left:-260px;transition:left .24s ease;box-shadow:var(--shlg)}
+  .sidebar.open{left:0}
+  #mob-btn{display:inline-flex}
+  .sb-overlay{position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:49;display:none}
+  .sb-overlay.show{display:block}
+}
+
+.page{display:none;padding:22px 26px 60px;max-width:1340px;width:100%;margin:0 auto}
+.page.active{display:block}
+@media(max-width:600px){.page{padding:14px 14px 50px}.topbar{padding:12px 14px}}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:20px;margin-bottom:16px}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:15px;flex-wrap:wrap}
+.card-head h3{font-family:var(--serif);font-size:1rem;font-weight:700;color:var(--t900)}
+.card-head .sub{font-size:.76rem;color:var(--soft);margin-top:2px}
+.eyebrow{font-family:var(--mono);font-size:.66rem;letter-spacing:1.4px;text-transform:uppercase;color:var(--t700);font-weight:700;margin-bottom:5px}
+
+/* ── STATS ── */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:15px 17px;box-shadow:var(--sh);position:relative;overflow:hidden}
+.stat::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--t700)}
+.stat.s-amber::before{background:var(--amber)}
+.stat.s-clay::before{background:var(--clay)}
+.stat.s-sage::before{background:var(--sage)}
+.stat.s-blue::before{background:var(--blue)}
+.stat .val{font-family:var(--serif);font-size:1.9rem;font-weight:700;line-height:1}
+.stat .lbl{font-size:.7rem;color:var(--soft);margin-top:5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+
+/* ── GAUGES ── */
+.gauge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.gauge-card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:16px;box-shadow:var(--sh);text-align:center;display:flex;flex-direction:column;
+  align-items:center;cursor:pointer;transition:transform .12s,box-shadow .12s;position:relative;
+}
+.gauge-card:hover{transform:translateY(-2px);box-shadow:var(--shlg)}
+.gauge-card .gn{font-size:.78rem;font-weight:700;color:var(--t900);margin-bottom:9px;min-height:2.3em;display:flex;align-items:center;justify-content:center;line-height:1.25;text-align:center}
+.gauge-card .gr{position:relative;width:100px;height:100px}
+.gauge-card .gr svg{transform:rotate(-90deg)}
+.gauge-card .gv{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.gauge-card .gv .gnum{font-family:var(--serif);font-size:1.3rem;font-weight:700}
+.gauge-card .gv .gpct{font-size:.6rem;color:var(--soft);font-weight:700;letter-spacing:.5px}
+.gauge-card .gf{margin-top:9px;font-size:.7rem;color:var(--soft);display:flex;gap:9px;justify-content:center}
+.gauge-card .gf b{color:var(--ink);font-family:var(--mono)}
+.gauge-card .gflag{position:absolute;top:8px;right:9px;font-size:.88rem}
+
+/* ── TABLES ── */
+.tw{overflow-x:auto;border-radius:var(--rsm);border:1px solid var(--line)}
+table.dt{width:100%;border-collapse:collapse;font-size:.82rem;background:#fff}
+table.dt th{background:var(--t50);color:var(--t900);font-weight:700;padding:9px 11px;text-align:left;border-bottom:2px solid var(--t100);font-size:.68rem;text-transform:uppercase;letter-spacing:.55px;white-space:nowrap}
+table.dt td{padding:8px 11px;border-bottom:1px solid var(--parch2);white-space:nowrap}
+table.dt tr:hover td{background:var(--t50)}
+table.dt tfoot td{font-weight:800;background:var(--t50);border-top:2px solid var(--t100)}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:.7rem;font-weight:700}
+.b-sage{background:var(--sage-bg);color:#3a6348}
+.b-amber{background:var(--amber-bg);color:#8a6206}
+.b-clay{background:var(--clay-bg);color:var(--clay)}
+.b-blue{background:var(--blue-bg);color:var(--blue)}
+.b-ink{background:var(--parch2);color:var(--soft)}
+
+/* ── ENTRY FORM ── */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.ef{background:var(--parch);border:1.5px solid var(--line);border-radius:var(--rsm);padding:11px 13px;transition:border-color .15s,background .15s}
+.ef:focus-within{border-color:var(--t700);background:#fff}
+.ef label{display:block;font-size:.66rem;font-weight:700;color:var(--soft);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px}
+.ef input{width:100%;border:none;background:transparent;font-size:1.25rem;font-weight:700;color:var(--t900);text-align:center;font-family:var(--serif)}
+.ef input:focus{outline:none}
+.ef.auto{background:var(--t50);border-color:var(--t700)}
+.ef.auto label{color:var(--t700)}
+.ef.auto input{color:var(--t700)}
+.ef.crit{background:var(--clay-bg);border-color:var(--clay)}
+.ef.crit input{color:var(--clay)}
+
+/* ── MODALS ── */
+.mo{position:fixed;inset:0;background:rgba(11,46,43,.52);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)}
+.mbox{background:#fff;border-radius:var(--r);padding:24px;max-width:430px;width:100%;box-shadow:var(--shlg);max-height:90vh;overflow-y:auto}
+.mbox h3{font-family:var(--serif);font-size:1.1rem;font-weight:700;color:var(--t900);margin-bottom:5px}
+.mbox .mdesc{font-size:.82rem;color:var(--soft);margin-bottom:16px}
+.mact{display:flex;gap:9px;margin-top:18px;justify-content:flex-end}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--t900);color:#fff;padding:12px 18px;border-radius:10px;font-size:.84rem;font-weight:600;box-shadow:var(--shlg);z-index:999;transform:translateY(80px);opacity:0;transition:all .28s;max-width:320px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.error{background:var(--clay)}
+.toast.warn{background:var(--amber);color:#3a2904}
+
+/* ── MISC ── */
+.empty{text-align:center;padding:44px 20px;color:var(--soft)}
+.empty .ei{font-size:2rem;margin-bottom:9px;opacity:.45}
+.fbar{background:var(--t50);border:1px solid var(--t100);border-radius:var(--rsm);padding:11px 15px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fbar label{font-size:.76rem;font-weight:700;color:var(--t800)}
+.fbar select,.fbar input[type=date],.fbar input[type=text]{padding:7px 9px;border:1.5px solid var(--t100);border-radius:7px;font-size:.8rem;font-family:var(--sans);background:#fff;color:var(--ink)}
+.tgl{display:inline-flex;border:1.5px solid var(--line);border-radius:9px;overflow:hidden}
+.tgl button{padding:7px 13px;border:none;background:#fff;font-size:.78rem;font-weight:700;color:var(--soft);font-family:inherit;border-right:1px solid var(--line)}
+.tgl button:last-child{border-right:none}
+.tgl button.active{background:var(--t900);color:#fff}
+.crit-warn{background:var(--clay-bg);border:1.5px solid #f2c4be;border-radius:var(--rsm);padding:11px 14px;margin-top:14px;font-size:.83rem;color:var(--clay);font-weight:700}
+@media print{
+  @page{size:A4 landscape;margin:10mm}
+  body *{visibility:hidden}
+  #print-zone,#print-zone *{visibility:visible}
+  #print-zone{position:fixed;top:0;left:0;width:100%;padding:0}
+  .no-print{display:none!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div id="login-page">
+  <div class="login-shell">
+    <div class="lbrand">
+      <div>
+        <div class="crest">TUH</div>
+        <h1>Ward Census &amp;<br>Bed Occupancy System</h1>
+        <p class="sub">Live tracking of beds, patients, admissions, discharges and patient flow across every ward at Tema Urban Hospital.</p>
+      </div>
+      <div class="tag">Ghana Health Service · Tema Community 2</div>
+    </div>
+    <div class="lform">
+      <h2>Sign in</h2>
+      <p class="lead">Enter your username and password to continue.</p>
+      <div class="field">
+        <label>Username</label>
+        <input id="lu" type="text" autocomplete="username" placeholder="e.g. nicu-ward">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <div class="pw-wrap">
+          <input id="lp" type="password" autocomplete="current-password" placeholder="••••••••">
+          <button type="button" class="pw-toggle" onclick="togglePw('lp',this)">SHOW</button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="doLogin()">Sign in →</button>
+      <div id="lerr" class="lerr hidden"></div>
+      <div class="lmeta">Forgot password? <a onclick="showToast('Ask your Super Admin to reset it.')">Contact Super Admin</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ APP ══════════════ -->
+<div class="sb-overlay" id="sb-overlay" onclick="closeSB()"></div>
+<div id="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-head">
+      <div class="crest">TUH</div>
+      <h1>Ward Census</h1>
+      <span class="role-tag" id="role-tag">—</span>
+    </div>
+    <div id="nav-cont"></div>
+    <div class="sb-foot">
+      <div class="user-pill">
+        <div class="av" id="u-av">—</div>
+        <div class="meta">
+          <div class="nm" id="u-nm">—</div>
+          <div class="ut" id="u-ut">—</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="width:100%;color:#fff;border-color:rgba(255,255,255,.18)" onclick="doLogout()">Sign out</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:11px">
+        <button id="mob-btn" onclick="openSB()">☰</button>
+        <div>
+          <h2 id="pg-title">Dashboard</h2>
+          <div class="desc" id="pg-desc">Hospital-wide ward overview</div>
+        </div>
+      </div>
+      <div class="topbar-r">
+        <span style="font-family:var(--mono);font-size:.75rem;color:var(--soft)" id="clock">—</span>
+      </div>
+    </div>
+
+    <!-- ─── PAGE: ENTRY ─── -->
+    <div class="page" id="page-entry">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="eyebrow" id="e-datelbl">Today's Entry</div>
+            <h3 id="e-wardname">Ward</h3>
+          </div>
+          <span class="badge b-blue" id="e-bedsbadge">— beds</span>
+        </div>
+        <div class="form-grid" id="e-grid"></div>
+        <div id="e-critwarn" class="crit-warn hidden">⚠ This entry will be flagged as critical — check bed count, mortality or absconded values.</div>
+        <div style="margin-top:16px;display:flex;gap:10px">
+          <button class="btn btn-primary" style="flex:1" id="btn-submit" onclick="submitEntry()">✓ Submit Today's Entry</button>
+        </div>
+        <div id="e-status" style="font-size:.76rem;color:var(--soft);text-align:center;margin-top:8px"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Recent entries — this ward</h3></div>
+        <div id="e-hist"><div class="empty"><div class="ei">📋</div><p>No entries yet.</p></div></div>
+      </div>
+    </div>
+
+    <!-- ─── PAGE: DASHBOARD ─── -->
+    <div class="page" id="page-dashboard">
+      <div class="fbar">
+        <label>📅 Date</label>
+        <input type="date" id="dash-date" onchange="renderDashboard()">
+        <button class="btn btn-ghost btn-sm" onclick="dashToday()">Today</button>
+        <span style="margin-left:auto;font-family:var(--mono);font-size:.74rem;color:var(--soft)" id="dash-upd">—</span>
+      </div>
+      <div class="stat-grid" id="dash-stats"></div>
+      <div class="card">
+        <div class="card-head">
+          <div><h3>Bed Occupancy Rate — by ward</h3><div class="sub">Ring = BOR. Click any ward for its report history.</div></div>
+        </div>
+        <div class="gauge-grid" id="dash-gauges"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Ward submission summary</h3></div>
+        <div class="tw">
+          <table class="dt">
+            <thead><tr><th>Ward</th><th>Beds</th><th>Patients</th><th>Empty</th><th>BOR</th><th>Adm.</th><th>Disch.</th><th>Trans↑</th><th>Trans↓</th><th>Mort.</th><th>Absc.</th><th>Status</th></tr></thead>
+            <tbody id="dash-tbody"></tbody>
+            <tfoot id="dash-tfoot"></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── PAGE: REPORTS ─── -->
+    <div class="page" id="page-reports">
+      <div class="fbar no-print">
+        <label>Ward</label><select id="r-ward"></select>
+        <label>From</label><input type="date" id="r-from">
+        <label>To</label><input type="date" id="r-to">
+        <button class="btn btn-primary btn-sm" onclick="renderReports()">Apply</button>
+        <button class="btn btn-amber btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Print</button>
+      </div>
+      <div class="card" id="print-zone">
+        <div class="card-head no-print">
+          <h3>Census records</h3>
+          <span class="sub" id="r-count">—</span>
+        </div>
+        <div class="tw">
+          <table class="dt">
+            <thead><tr><th>Date</th><th>Ward</th><th>Beds</th><th>Patients</th><th>Empty</th><th>BOR%</th><th>Adm.</th><th>Disch.</th><th>Trans↑</th><th>Trans↓</th><th>Mort.</th><th>Absc.</th><th>Submitted by</th></tr></thead>
+            <tbody id="r-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── PAGE: SUMMARY ─── -->
+    <div class="page" id="page-summary">
+      <div class="fbar">
+        <label>Period</label>
+        <div class="tgl" id="sum-period">
+          <button class="active" data-p="7">7 days</button>
+          <button data-p="30">30 days</button>
+          <button data-p="90">90 days</button>
+        </div>
+        <label>Ward</label>
+        <select id="sum-ward"></select>
+        <button class="btn btn-ghost btn-sm" onclick="renderSummary()">Refresh</button>
+      </div>
+      <div class="stat-grid" id="sum-stats"></div>
+      <div class="card">
+        <div class="card-head"><h3>Average BOR trend</h3><span class="sub" id="sum-trend-lbl"></span></div>
+        <div id="sum-trend"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Admissions vs Discharges</h3></div>
+        <div id="sum-flow"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Ward ranking — average BOR (selected period)</h3></div>
+        <div id="sum-rank"></div>
+      </div>
+    </div>
+
+    <!-- ─── PAGE: ALERTS ─── -->
+    <div class="page" id="page-alerts">
+      <div class="card">
+        <div class="card-head"><h3>Active alerts — today</h3><button class="btn btn-ghost btn-sm" onclick="renderAlerts()">Refresh</button></div>
+        <div id="alerts-list"></div>
+      </div>
+    </div>
+
+    <!-- ─── PAGE: USERS ─── -->
+    <div class="page" id="page-users">
+      <div class="card">
+        <div class="card-head">
+          <div><h3>User accounts</h3><div class="sub">Manage logins for ward staff and administrators</div></div>
+          <button class="btn btn-primary btn-sm" onclick="openUserModal(null)">+ New account</button>
+        </div>
+        <div class="tw"><table class="dt">
+          <thead><tr><th>Username</th><th>Full name</th><th>Role</th><th>Ward / Unit</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+          <tbody id="users-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ─── PAGE: WARDS ─── -->
+    <div class="page" id="page-wards">
+      <div class="card">
+        <div class="card-head">
+          <div><h3>Ward configuration</h3><div class="sub">Bed capacities drive all BOR calculations</div></div>
+          <button class="btn btn-primary btn-sm" onclick="openWardModal(null)">+ New ward</button>
+        </div>
+        <div class="tw"><table class="dt">
+          <thead><tr><th>Ward name</th><th>Code</th><th>Beds</th><th>Mortality field</th><th>Absconded field</th><th>Actions</th></tr></thead>
+          <tbody id="wards-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ─── PAGE: ACCOUNT ─── -->
+    <div class="page" id="page-account">
+      <div class="card" style="max-width:460px">
+        <div class="card-head"><h3>My account</h3></div>
+        <div class="field"><label>Username</label><input id="ac-uname" disabled></div>
+        <div class="field"><label>Full name</label><input id="ac-fname"></div>
+        <div class="field">
+          <label>New password (leave blank to keep current)</label>
+          <div class="pw-wrap">
+            <input type="password" id="ac-pw" placeholder="••••••••">
+            <button type="button" class="pw-toggle" onclick="togglePw('ac-pw',this)">SHOW</button>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="saveAccount()">Save changes</button>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app-shell -->
+
+<div id="toast" class="toast"></div>
+<div id="modal-root"></div>
+
+<!-- ══════════════════════════════════════════
+     APPLICATION LOGIC
+══════════════════════════════════════════ -->
+<script>
+/* ══════════════════════════════════════════
+   DATA MODEL & DEFAULTS
+══════════════════════════════════════════
+  Firestore collections:
+    users   { username, password, fullName, role, ward, active, createdAt }
+    wards   { code, name, beds, hasMortality, hasAbsconded, order }
+    entries { ward, wardName, date(YYYY-MM-DD), beds, patients,
+              admissions, discharges, transferIn, transferOut,
+              mortality, absconded, empty, bor, isCritical,
+              submittedBy, submittedAt }
+
+  Roles: superadmin | admin | ward
+*/
+
+const DEFAULT_WARDS = [
+  {code:'childrens',    name:"Children's Ward",       beds:14, hasMortality:true,  hasAbsconded:false, order:1},
+  {code:'nicu',         name:'NICU',                   beds:5,  hasMortality:true,  hasAbsconded:false, order:2},
+  {code:'recovery_m',   name:'Recovery – Male',        beds:6,  hasMortality:true,  hasAbsconded:true,  order:3},
+  {code:'recovery_f',   name:'Recovery – Female',      beds:5,  hasMortality:true,  hasAbsconded:true,  order:4},
+  {code:'emergency',    name:'Emergency',              beds:3,  hasMortality:true,  hasAbsconded:true,  order:5},
+  {code:'mental',       name:'Mental Health',          beds:1,  hasMortality:false, hasAbsconded:true,  order:6},
+  {code:'mat_prenatal', name:'Maternity – Prenatal',   beds:4,  hasMortality:true,  hasAbsconded:false, order:7},
+  {code:'mat_postop',   name:'Maternity – Post OP',    beds:4,  hasMortality:true,  hasAbsconded:false, order:8},
+  {code:'mat_1st',      name:'Maternity – 1st Stage',  beds:6,  hasMortality:true,  hasAbsconded:false, order:9},
+  {code:'mat_4th',      name:'Maternity – 4th Stage',  beds:4,  hasMortality:true,  hasAbsconded:false, order:10},
+];
+
+const SA_FALLBACK = {
+  username:'superadmin', password:'TUH@dmin2026',
+  fullName:'Super Administrator', role:'superadmin', ward:null, active:true
+};
+
+// runtime state
+let fb = null, currentUser = null;
+let WARDS = [], WBC = {};   // WARDS array, Ward By Code map
+let ENTRIES = [];           // live cache
+let USERS_CACHE = [];
+let unsubEntries = null;
+let appInited = false;
+let sumDays = 7;
+
+// wait for firebase module
+window.addEventListener('fb-ready', () => { fb = window.__fb; initApp(); });
+setTimeout(() => { if (!fb && window.__fb) { fb = window.__fb; initApp(); } }, 800);
+
+/* ══ INIT ══ */
+async function initApp(){
+  if (appInited) return; appInited = true;
+  startClock();
+  await loadWards();
+  await ensureSuperAdmin();
+  restoreSession();
+}
+
+/* ══ UTILITIES ══ */
+const today = () => new Date().toISOString().split('T')[0];
+const pct   = n  => (Math.round((n||0)*10)/10).toFixed(1)+'%';
+const ini   = s  => { if(!s) return '?'; const p=s.trim().split(/\s+/); return (p[0][0]+(p[1]?p[1][0]:'')).toUpperCase(); };
+const rlbl  = r  => ({superadmin:'Super Admin', admin:'Hospital Admin', ward:'Ward Staff'}[r]||r);
+
+function startClock(){
+  const el = document.getElementById('clock');
+  const tick = () => {
+    const d = new Date();
+    el.textContent = d.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})
+      +'  '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  };
+  tick(); setInterval(tick, 30000);
+}
+
+window.showToast = function(msg, type=''){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show'+(type?' '+type:'');
+  clearTimeout(t._t); t._t = setTimeout(()=>t.className='toast', 3500);
+};
+window.togglePw = function(id, btn){
+  const el = document.getElementById(id);
+  el.type = el.type==='password' ? (btn.textContent='HIDE','text') : (btn.textContent='SHOW','password');
+};
+window.closeModal = () => document.getElementById('modal-root').innerHTML='';
+
+/* ══ WARDS ══ */
+async function loadWards(){
+  try{
+    const snap = await fb.getDocs(fb.collection(fb.db,'wards'));
+    if(snap.empty){
+      const batch = fb.writeBatch(fb.db);
+      DEFAULT_WARDS.forEach(w => batch.set(fb.doc(fb.collection(fb.db,'wards')), w));
+      await batch.commit();
+      WARDS = DEFAULT_WARDS.map((w,i)=>({id:'seed'+i,...w}));
+    } else {
+      WARDS = snap.docs.map(d=>({id:d.id,...d.data()}));
+    }
+  } catch(e){
+    console.error('loadWards:', e.message);
+    WARDS = DEFAULT_WARDS.map((w,i)=>({id:'loc'+i,...w}));
+  }
+  WARDS.sort((a,b)=>(a.order||0)-(b.order||0));
+  WBC = {}; WARDS.forEach(w=>WBC[w.code]=w);
+}
+
+/* ══ SUPER ADMIN BOOTSTRAP ══ */
+async function ensureSuperAdmin(){
+  try{
+    const q = fb.query(fb.collection(fb.db,'users'), fb.where('role','==','superadmin'));
+    if((await fb.getDocs(q)).empty){
+      await fb.addDoc(fb.collection(fb.db,'users'),{...SA_FALLBACK, createdAt:fb.serverTimestamp()});
+    }
+  } catch(e){ console.error('ensureSuperAdmin:', e.message); }
+}
+
+/* ══ AUTH ══ */
+window.doLogin = async function(){
+  const u = document.getElementById('lu').value.trim();
+  const p = document.getElementById('lp').value;
+  document.getElementById('lerr').classList.add('hidden');
+  if(!u||!p){ showErr('Enter username and password.'); return; }
+
+  // hardcoded fallback — works even if Firestore unreachable
+  if(u===SA_FALLBACK.username && p===SA_FALLBACK.password){
+    currentUser={id:'fallback',...SA_FALLBACK}; return afterLogin();
+  }
+  try{
+    const q = fb.query(fb.collection(fb.db,'users'), fb.where('username','==',u));
+    const snap = await fb.getDocs(q);
+    if(snap.empty){ showErr('Account not found. Contact your Super Admin.'); return; }
+    const doc = snap.docs[0], data = doc.data();
+    if(data.active===false){ showErr('Account disabled. Contact your Super Admin.'); return; }
+    if(data.password!==p){ showErr('Incorrect password.'); return; }
+    currentUser = {id:doc.id,...data};
+    sessionStorage.setItem('tuh_s', JSON.stringify({u}));
+    afterLogin();
+  } catch(e){ showErr('Login error: '+e.message); }
+};
+
+function showErr(msg){
+  const el=document.getElementById('lerr'); el.innerHTML='⚠ '+msg; el.classList.remove('hidden');
+}
+
+async function restoreSession(){
+  const raw = sessionStorage.getItem('tuh_s'); if(!raw) return;
+  try{
+    const {u} = JSON.parse(raw);
+    const q = fb.query(fb.collection(fb.db,'users'), fb.where('username','==',u));
+    const snap = await fb.getDocs(q);
+    if(!snap.empty){
+      const d=snap.docs[0],data=d.data();
+      if(data.active!==false){ currentUser={id:d.id,...data}; afterLogin(); }
+    }
+  } catch(e){ sessionStorage.removeItem('tuh_s'); }
+}
+
+window.doLogout = function(){
+  currentUser=null; sessionStorage.removeItem('tuh_s');
+  if(unsubEntries){unsubEntries();unsubEntries=null;} ENTRIES=[];
+  document.getElementById('app-shell').classList.remove('active');
+  document.getElementById('login-page').style.display='flex';
+  document.getElementById('lu').value=''; document.getElementById('lp').value='';
+  document.getElementById('lerr').classList.add('hidden');
+};
+
+function afterLogin(){
+  document.getElementById('login-page').style.display='none';
+  document.getElementById('app-shell').classList.add('active');
+  buildNav();
+  document.getElementById('u-av').textContent  = ini(currentUser.fullName||currentUser.username);
+  document.getElementById('u-nm').textContent  = currentUser.fullName||currentUser.username;
+  document.getElementById('u-ut').textContent  = currentUser.role==='ward'
+    ? (WBC[currentUser.ward]?.name||currentUser.ward||'—') : rlbl(currentUser.role);
+  document.getElementById('role-tag').textContent = rlbl(currentUser.role);
+  subscribeEntries();
+  switchPage(currentUser.role==='ward'?'entry':'dashboard');
+}
+
+/* ══ LIVE DATA ══ */
+function subscribeEntries(){
+  if(unsubEntries) unsubEntries();
+  try{
+    unsubEntries = fb.onSnapshot(fb.collection(fb.db,'entries'), snap=>{
+      ENTRIES = snap.docs.map(d=>({id:d.id,...d.data()}));
+      const pg = document.querySelector('.page.active')?.id?.replace('page-','');
+      if(pg==='dashboard') renderDashboard();
+      if(pg==='entry')     renderEntryHistory();
+      if(pg==='alerts')    renderAlerts();
+      if(pg==='summary')   renderSummary();
+    }, e=>console.error('entries snap:',e.message));
+  } catch(e){ console.error('subscribeEntries:',e.message); }
+}
+
+/* ══ NAVIGATION ══ */
+const NAV = {
+  superadmin:[
+    {g:'Overview', items:[
+      {id:'dashboard',ic:'📊',l:'Dashboard'},
+      {id:'reports',  ic:'🗂️',l:'Reports'},
+      {id:'summary',  ic:'📈',l:'Summary & Trends'},
+      {id:'alerts',   ic:'🚨',l:'Alerts'},
+    ]},
+    {g:'Administration', items:[
+      {id:'users',   ic:'👥',l:'User Accounts'},
+      {id:'wards',   ic:'🏥',l:'Ward Config'},
+      {id:'account', ic:'⚙️',l:'My Account'},
+    ]},
+  ],
+  admin:[
+    {g:'Overview', items:[
+      {id:'dashboard',ic:'📊',l:'Dashboard'},
+      {id:'reports',  ic:'🗂️',l:'Reports'},
+      {id:'summary',  ic:'📈',l:'Summary & Trends'},
+      {id:'alerts',   ic:'🚨',l:'Alerts'},
+    ]},
+    {g:'Account', items:[{id:'account',ic:'⚙️',l:'My Account'}]},
+  ],
+  ward:[
+    {g:'Ward', items:[{id:'entry',ic:'📝',l:'Daily Entry'}]},
+    {g:'Account', items:[{id:'account',ic:'⚙️',l:'My Account'}]},
+  ],
+};
+const PMETA = {
+  entry:    {t:'Daily Ward Entry',      d:"Submit today's census data for your ward"},
+  dashboard:{t:'Dashboard',             d:'Live hospital-wide bed state'},
+  reports:  {t:'Reports',               d:'Browse and export historical census records'},
+  summary:  {t:'Summary & Trends',      d:'Aggregated statistics and patient flow'},
+  alerts:   {t:'Alerts',               d:'Wards needing immediate attention'},
+  users:    {t:'User Accounts',         d:'Create and manage staff logins'},
+  wards:    {t:'Ward Configuration',    d:'Bed capacities and ward settings'},
+  account:  {t:'My Account',            d:'Update your profile and password'},
+};
+
+function buildNav(){
+  const cfg = NAV[currentUser.role]||NAV.ward;
+  document.getElementById('nav-cont').innerHTML = cfg.map(g=>`
+    <div class="nav-grp">
+      <div class="nav-lbl">${g.g}</div>
+      ${g.items.map(it=>`<button class="nav-link" data-page="${it.id}" onclick="switchPage('${it.id}')">
+        <span class="ic">${it.ic}</span>${it.l}</button>`).join('')}
+    </div>`).join('');
+}
+
+window.switchPage = function(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
+  const pg=document.getElementById('page-'+id); if(pg) pg.classList.add('active');
+  const m=PMETA[id]||{t:id,d:''};
+  document.getElementById('pg-title').textContent=m.t;
+  document.getElementById('pg-desc').textContent=m.d;
+  closeSB();
+  const fn={
+    entry:    ()=>renderEntryPage(),
+    dashboard:()=>{ if(!document.getElementById('dash-date').value) document.getElementById('dash-date').value=today(); renderDashboard(); },
+    reports:  ()=>renderReportsPage(),
+    summary:  ()=>renderSummary(),
+    alerts:   ()=>renderAlerts(),
+    users:    ()=>renderUsersPage(),
+    wards:    ()=>renderWardsPage(),
+    account:  ()=>renderAccountPage(),
+  };
+  fn[id]?.();
+};
+window.openSB  = ()=>{ document.getElementById('sidebar').classList.add('open'); document.getElementById('sb-overlay').classList.add('show'); };
+window.closeSB = ()=>{ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sb-overlay').classList.remove('show'); };
+
+/* ══ ENTRY PAGE ══ */
+function renderEntryPage(){
+  const wc=currentUser.ward, meta=WBC[wc];
+  document.getElementById('e-wardname').textContent = meta?meta.name:'No ward assigned';
+  document.getElementById('e-bedsbadge').textContent = meta?meta.beds+' beds':'—';
+  document.getElementById('e-datelbl').textContent =
+    new Date().toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})+' · Today\'s Entry';
+  if(!meta){ document.getElementById('e-grid').innerHTML='<p style="color:var(--soft);font-size:.84rem">No ward is linked to your account. Ask your Super Admin to update it.</p>'; return; }
+
+  const fields=[
+    {id:'fe-pat',  l:'Patients (census)'},
+    {id:'fe-adm',  l:'Admissions'},
+    {id:'fe-dis',  l:'Discharges'},
+    {id:'fe-tin',  l:'Transfers In'},
+    {id:'fe-tout', l:'Transfers Out'},
+  ];
+  if(meta.hasMortality) fields.push({id:'fe-mort',l:'Mortality'});
+  if(meta.hasAbsconded) fields.push({id:'fe-absc',l:'Absconded'});
+  fields.push({id:'fe-empty',l:'Empty Beds (auto)',  auto:true, ro:true});
+  fields.push({id:'fe-bor',  l:'BOR % (auto)',       auto:true, ro:true});
+
+  document.getElementById('e-grid').innerHTML = fields.map(f=>`
+    <div class="ef${f.auto?' auto':''}" id="ew-${f.id}">
+      <label>${f.l}</label>
+      <input id="${f.id}" type="${f.id==='fe-bor'?'text':'number'}" min="0" value="0" ${f.ro?'readonly':''} oninput="onEI()">
+    </div>`).join('');
+  onEI(); renderEntryHistory();
+}
+
+window.onEI = function(){
+  const wc=currentUser.ward, meta=WBC[wc]; if(!meta) return;
+  const pat  = parseInt(document.getElementById('fe-pat')?.value)||0;
+  const mort = parseInt(document.getElementById('fe-mort')?.value)||0;
+  const absc = parseInt(document.getElementById('fe-absc')?.value)||0;
+  const empty= Math.max(0,meta.beds-pat);
+  const bor  = meta.beds>0?pat/meta.beds*100:0;
+  const crit = mort>=2||absc>0||bor>=100;
+  document.getElementById('fe-empty').value=empty;
+  document.getElementById('fe-bor').value=pct(bor);
+  const bw=document.getElementById('ew-fe-bor'); if(bw) bw.classList.toggle('crit',bor>=100);
+  document.getElementById('e-critwarn').classList.toggle('hidden',!crit);
+};
+
+window.submitEntry = async function(){
+  const wc=currentUser.ward, meta=WBC[wc];
+  if(!meta){showToast('No ward assigned.','error');return;}
+  const g = id => parseInt(document.getElementById(id)?.value)||0;
+  const pat=g('fe-pat'), adm=g('fe-adm'), dis=g('fe-dis'), tin=g('fe-tin'), tout=g('fe-tout');
+  const mort=meta.hasMortality?g('fe-mort'):0, absc=meta.hasAbsconded?g('fe-absc'):0;
+  const empty=Math.max(0,meta.beds-pat), bor=meta.beds>0?pat/meta.beds*100:0;
+  const isCritical=mort>=2||absc>0||bor>=100, date=today();
+  const btn=document.getElementById('btn-submit');
+  btn.disabled=true; btn.textContent='Submitting…';
+  const payload={
+    ward:wc, wardName:meta.name, date, beds:meta.beds,
+    patients:pat, admissions:adm, discharges:dis, transferIn:tin, transferOut:tout,
+    mortality:mort, absconded:absc, empty, bor, isCritical,
+    submittedBy:currentUser.fullName||currentUser.username,
+    submittedAt:fb.serverTimestamp()
+  };
+  try{
+    const q=fb.query(fb.collection(fb.db,'entries'),fb.where('ward','==',wc),fb.where('date','==',date));
+    const snap=await fb.getDocs(q);
+    if(!snap.empty) await fb.updateDoc(fb.doc(fb.db,'entries',snap.docs[0].id),payload);
+    else            await fb.addDoc(fb.collection(fb.db,'entries'),payload);
+    showToast('✓ Entry saved for today.');
+    document.getElementById('e-status').textContent='Saved at '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  } catch(e){showToast('Error: '+e.message,'error');}
+  finally{btn.disabled=false;btn.textContent='✓ Submit Today\'s Entry';}
+};
+
+function renderEntryHistory(){
+  const wc=currentUser.ward, meta=WBC[wc];
+  const rows=ENTRIES.filter(e=>e.ward===wc).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,21);
+  const el=document.getElementById('e-hist');
+  if(!rows.length){el.innerHTML='<div class="empty"><div class="ei">📋</div><p>No entries yet for this ward.</p></div>';return;}
+  el.innerHTML=`<div class="tw"><table class="dt"><thead><tr>
+    <th>Date</th><th>Patients</th><th>Empty</th><th>BOR</th>
+    <th>Adm.</th><th>Disch.</th><th>In</th><th>Out</th>
+    ${meta?.hasMortality?'<th>Mort.</th>':''}${meta?.hasAbsconded?'<th>Absc.</th>':''}
+    <th>Status</th></tr></thead><tbody>
+    ${rows.map(e=>`<tr>
+      <td style="font-family:var(--mono);font-size:.78rem">${e.date}</td>
+      <td>${e.patients}</td><td>${e.empty}</td>
+      <td><b style="color:${e.bor>=100?'var(--clay)':e.bor>=85?'var(--amber)':'var(--t700)'}">${pct(e.bor)}</b></td>
+      <td>${e.admissions}</td><td>${e.discharges}</td><td>${e.transferIn}</td><td>${e.transferOut}</td>
+      ${meta?.hasMortality?`<td>${e.mortality||0}</td>`:''}
+      ${meta?.hasAbsconded?`<td>${e.absconded||0}</td>`:''}
+      <td>${e.isCritical?'<span class="badge b-clay">⚠ Critical</span>':'<span class="badge b-sage">✓ OK</span>'}</td>
+    </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+/* ══ DASHBOARD ══ */
+window.dashToday = ()=>{ document.getElementById('dash-date').value=today(); renderDashboard(); };
+
+function renderDashboard(){
+  const date=document.getElementById('dash-date')?.value||today();
+  const byW={}; ENTRIES.filter(e=>e.date===date).forEach(e=>byW[e.ward]=e);
+  let tB=0,tO=0,tE=0,tA=0,tD=0,tM=0,tAb=0,sub=0;
+  WARDS.forEach(w=>{
+    tB+=w.beds; const e=byW[w.code];
+    if(e){sub++;tO+=e.patients||0;tE+=e.empty||0;tA+=e.admissions||0;tD+=e.discharges||0;tM+=e.mortality||0;tAb+=e.absconded||0;}
+    else tE+=w.beds;
+  });
+  const hBor=tB>0?tO/tB*100:0;
+  const bc=hBor>=100?'s-clay':hBor>=85?'s-amber':'s-sage';
+
+  document.getElementById('dash-stats').innerHTML=`
+    <div class="stat s-blue"><div class="val">${tB}</div><div class="lbl">Total beds</div></div>
+    <div class="stat s-sage"><div class="val">${tO}</div><div class="lbl">Occupied</div></div>
+    <div class="stat s-amber"><div class="val">${tE}</div><div class="lbl">Empty beds</div></div>
+    <div class="stat ${bc}"><div class="val">${pct(hBor)}</div><div class="lbl">Hospital BOR</div></div>
+    <div class="stat"><div class="val">${tA}</div><div class="lbl">Admissions</div></div>
+    <div class="stat"><div class="val">${tD}</div><div class="lbl">Discharges</div></div>
+    <div class="stat s-clay"><div class="val">${tM}</div><div class="lbl">Mortality</div></div>
+    <div class="stat"><div class="val">${sub}/${WARDS.length}</div><div class="lbl">Wards submitted</div></div>`;
+
+  const R=44,C=2*Math.PI*R;
+  document.getElementById('dash-gauges').innerHTML=WARDS.map(w=>{
+    const e=byW[w.code], bor=e?e.bor:0, pts=e?e.patients:0;
+    const col=bor>=100?'var(--clay)':bor>=85?'var(--amber)':'var(--t700)';
+    const off=C-Math.min(bor/100,1)*C;
+    const flag=!e?'⚪':e.isCritical?'🔴':'';
+    return `<div class="gauge-card" onclick="jumpReport('${w.code}')">
+      ${flag?`<span class="gflag">${flag}</span>`:''}
+      <div class="gn">${w.name}</div>
+      <div class="gr">
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="${R}" fill="none" stroke="var(--parch2)" stroke-width="9"/>
+          <circle cx="50" cy="50" r="${R}" fill="none" stroke="${col}" stroke-width="9"
+            stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" stroke-linecap="round"/>
+        </svg>
+        <div class="gv"><div class="gnum" style="color:${col}">${pts}</div><div class="gpct">${pct(bor)}</div></div>
+      </div>
+      <div class="gf"><span>Cap <b>${w.beds}</b></span><span>Free <b>${e?e.empty:w.beds}</b></span></div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('dash-upd').textContent=
+    'Date: '+new Date(date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+
+  document.getElementById('dash-tbody').innerHTML=WARDS.map(w=>{
+    const e=byW[w.code];
+    if(!e) return `<tr style="opacity:.5"><td>${w.name}</td><td>${w.beds}</td><td>—</td><td>${w.beds}</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="badge b-ink">Not submitted</span></td></tr>`;
+    return `<tr><td>${w.name}</td><td>${w.beds}</td><td><b>${e.patients}</b></td><td>${e.empty}</td>
+      <td><b style="color:${e.bor>=100?'var(--clay)':e.bor>=85?'var(--amber)':'var(--t700)'}">${pct(e.bor)}</b></td>
+      <td>${e.admissions}</td><td>${e.discharges}</td><td>${e.transferIn}</td><td>${e.transferOut}</td>
+      <td>${w.hasMortality?(e.mortality||0):'—'}</td><td>${w.hasAbsconded?(e.absconded||0):'—'}</td>
+      <td>${e.isCritical?'<span class="badge b-clay">⚠ Critical</span>':'<span class="badge b-sage">✓ OK</span>'}</td></tr>`;
+  }).join('');
+
+  document.getElementById('dash-tfoot').innerHTML=`<tr>
+    <td>TOTAL</td><td>${tB}</td><td>${tO}</td><td>${tE}</td><td>${pct(hBor)}</td>
+    <td>${tA}</td><td>${tD}</td><td>—</td><td>—</td><td>${tM}</td><td>${tAb}</td>
+    <td>${sub}/${WARDS.length} wards</td></tr>`;
+}
+
+window.jumpReport = wc=>{ switchPage('reports'); document.getElementById('r-ward').value=wc; renderReports(); };
+
+/* ══ REPORTS ══ */
+function renderReportsPage(){
+  const sel=document.getElementById('r-ward');
+  sel.innerHTML='<option value="">All wards</option>'+WARDS.map(w=>`<option value="${w.code}">${w.name}</option>`).join('');
+  if(!document.getElementById('r-from').value){
+    const d=new Date(); d.setDate(d.getDate()-7);
+    document.getElementById('r-from').value=d.toISOString().split('T')[0];
+    document.getElementById('r-to').value=today();
+  }
+  renderReports();
+}
+window.renderReports=function(){
+  const ward=document.getElementById('r-ward').value;
+  const from=document.getElementById('r-from').value;
+  const to=document.getElementById('r-to').value;
+  const rows=ENTRIES.filter(e=>(!ward||e.ward===ward)&&(!from||e.date>=from)&&(!to||e.date<=to))
+    .sort((a,b)=>b.date.localeCompare(a.date)||a.wardName.localeCompare(b.wardName));
+  document.getElementById('r-count').textContent=rows.length+' record(s)';
+  document.getElementById('r-tbody').innerHTML=rows.length?rows.map(e=>`<tr>
+    <td style="font-family:var(--mono);font-size:.78rem">${e.date}</td>
+    <td>${e.wardName}</td><td>${e.beds}</td><td>${e.patients}</td><td>${e.empty}</td>
+    <td><b style="color:${e.bor>=100?'var(--clay)':e.bor>=85?'var(--amber)':'var(--t700)'}">${pct(e.bor)}</b></td>
+    <td>${e.admissions}</td><td>${e.discharges}</td><td>${e.transferIn}</td><td>${e.transferOut}</td>
+    <td>${e.mortality||0}</td><td>${e.absconded||0}</td>
+    <td style="font-size:.76rem;color:var(--soft)">${e.submittedBy||'—'}</td>
+  </tr>`).join(''):'<tr><td colspan="13" style="text-align:center;padding:28px;color:var(--soft)">No records for this filter.</td></tr>';
+};
+window.exportCSV=function(){
+  const ward=document.getElementById('r-ward').value;
+  const from=document.getElementById('r-from').value;
+  const to=document.getElementById('r-to').value;
+  const rows=ENTRIES.filter(e=>(!ward||e.ward===ward)&&(!from||e.date>=from)&&(!to||e.date<=to))
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  if(!rows.length){showToast('No data to export.','error');return;}
+  const h=['Date','Ward','Beds','Patients','Empty','BOR%','Admissions','Discharges','Trans-In','Trans-Out','Mortality','Absconded','Submitted By'];
+  const csv=[h.join(','),...rows.map(e=>[e.date,`"${e.wardName}"`,e.beds,e.patients,e.empty,pct(e.bor),e.admissions,e.discharges,e.transferIn,e.transferOut,e.mortality||0,e.absconded||0,`"${(e.submittedBy||'').replace(/"/g,'""')}"`].join(','))].join('\n');
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv'})),download:`TUH_Census_${from}_to_${to}.csv`});
+  a.click(); showToast('Exported '+rows.length+' records.');
+};
+
+/* ══ SUMMARY ══ */
+function renderSummary(){
+  const swel=document.getElementById('sum-ward');
+  if(!swel.dataset.built){
+    swel.innerHTML='<option value="">Hospital-wide</option>'+WARDS.map(w=>`<option value="${w.code}">${w.name}</option>`).join('');
+    swel.dataset.built='1'; swel.onchange=renderSummary;
+    document.querySelectorAll('#sum-period button').forEach(b=>b.onclick=()=>{
+      document.querySelectorAll('#sum-period button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active'); sumDays=parseInt(b.dataset.p); renderSummary();
+    });
+  }
+  const ward=swel.value;
+  const cut=new Date(); cut.setDate(cut.getDate()-sumDays);
+  const cutS=cut.toISOString().split('T')[0];
+  const rows=ENTRIES.filter(e=>e.date>=cutS&&(!ward||e.ward===ward));
+
+  const tA=rows.reduce((s,e)=>s+(e.admissions||0),0);
+  const tD=rows.reduce((s,e)=>s+(e.discharges||0),0);
+  const tM=rows.reduce((s,e)=>s+(e.mortality||0),0);
+  const tAb=rows.reduce((s,e)=>s+(e.absconded||0),0);
+  const avgB=rows.length?rows.reduce((s,e)=>s+(e.bor||0),0)/rows.length:0;
+  const critN=rows.filter(e=>e.isCritical).length;
+
+  document.getElementById('sum-stats').innerHTML=`
+    <div class="stat"><div class="val">${pct(avgB)}</div><div class="lbl">Avg BOR</div></div>
+    <div class="stat s-sage"><div class="val">${tA}</div><div class="lbl">Total admissions</div></div>
+    <div class="stat s-blue"><div class="val">${tD}</div><div class="lbl">Total discharges</div></div>
+    <div class="stat s-clay"><div class="val">${tM}</div><div class="lbl">Mortality</div></div>
+    <div class="stat s-amber"><div class="val">${tAb}</div><div class="lbl">Absconded</div></div>
+    <div class="stat s-amber"><div class="val">${critN}</div><div class="lbl">Critical entries</div></div>`;
+
+  // BOR trend
+  document.getElementById('sum-trend-lbl').textContent=ward?WBC[ward]?.name||ward:'All wards — daily average';
+  const bD={}; rows.forEach(e=>{bD[e.date]=bD[e.date]||{s:0,n:0}; bD[e.date].s+=(e.bor||0); bD[e.date].n++;});
+  const dates=Object.keys(bD).sort();
+  document.getElementById('sum-trend').innerHTML=dates.length?dates.map(d=>{
+    const avg=bD[d].s/bD[d].n, col=avg>=100?'var(--clay)':avg>=85?'var(--amber)':'var(--t700)';
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
+      <div style="width:92px;font-size:.72rem;color:var(--soft);font-family:var(--mono)">${d}</div>
+      <div style="flex:1;background:var(--parch2);border-radius:5px;height:20px;overflow:hidden">
+        <div style="width:${Math.max(2,avg)}%;max-width:100%;height:100%;background:${col};border-radius:5px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;min-width:38px">
+          <span style="font-size:.68rem;font-weight:700;color:#fff">${pct(avg)}</span>
+        </div>
+      </div></div>`;
+  }).join(''):'<div class="empty"><div class="ei">📈</div><p>No data yet for this period.</p></div>';
+
+  // Flow chart
+  const fEl=document.getElementById('sum-flow');
+  if(!ward){
+    const wM={}; WARDS.forEach(w=>wM[w.code]={a:0,d:0,n:w.name});
+    rows.forEach(e=>{if(wM[e.ward]){wM[e.ward].a+=(e.admissions||0);wM[e.ward].d+=(e.discharges||0);}});
+    const mx=Math.max(...Object.values(wM).flatMap(v=>[v.a,v.d]),1);
+    fEl.innerHTML=WARDS.map(w=>{
+      const v=wM[w.code];
+      return `<div style="margin-bottom:11px">
+        <div style="font-size:.78rem;font-weight:700;color:var(--t900);margin-bottom:4px">${w.name}</div>
+        ${fBar('Adm.',v.a,mx,'var(--sage)')}${fBar('Disch.',v.d,mx,'var(--blue)')}
+      </div>`;
+    }).join('');
+  } else {
+    const dM={}; rows.forEach(e=>{dM[e.date]=dM[e.date]||{a:0,d:0}; dM[e.date].a+=(e.admissions||0); dM[e.date].d+=(e.discharges||0);});
+    const ds=Object.keys(dM).sort(), mx=Math.max(...ds.flatMap(d=>[dM[d].a,dM[d].d]),1);
+    fEl.innerHTML=ds.length?ds.map(d=>`<div style="margin-bottom:9px">
+      <div style="font-family:var(--mono);font-size:.71rem;color:var(--soft);margin-bottom:3px">${d}</div>
+      ${fBar('Adm.',dM[d].a,mx,'var(--sage)')}${fBar('Disch.',dM[d].d,mx,'var(--blue)')}
+    </div>`).join(''):'<div class="empty"><div class="ei">📊</div><p>No data yet.</p></div>';
+  }
+
+  // Ranking
+  const rank=WARDS.map(w=>{
+    const wr=ENTRIES.filter(e=>e.date>=cutS&&e.ward===w.code);
+    return {n:w.name, avg:wr.length?wr.reduce((s,e)=>s+(e.bor||0),0)/wr.length:0, cnt:wr.length};
+  }).sort((a,b)=>b.avg-a.avg);
+  document.getElementById('sum-rank').innerHTML=`<div class="tw"><table class="dt">
+    <thead><tr><th>#</th><th>Ward</th><th>Avg BOR</th><th>Entries in period</th></tr></thead>
+    <tbody>${rank.map((r,i)=>`<tr>
+      <td style="font-family:var(--mono)">${i+1}</td><td>${r.n}</td>
+      <td><b style="color:${r.avg>=100?'var(--clay)':r.avg>=85?'var(--amber)':'var(--t700)'}">${r.cnt?pct(r.avg):'—'}</b></td>
+      <td>${r.cnt}</td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function fBar(label, val, max, color){
+  return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+    <span style="width:50px;font-size:.68rem;color:var(--soft)">${label}</span>
+    <div style="flex:1;background:var(--parch2);border-radius:4px;height:13px;overflow:hidden">
+      <div style="width:${Math.max(2,val/max*100)}%;height:100%;background:${color};border-radius:4px"></div>
+    </div>
+    <span style="font-family:var(--mono);font-size:.7rem;width:24px;text-align:right">${val}</span>
+  </div>`;
+}
+
+/* ══ ALERTS ══ */
+function renderAlerts(){
+  const td=today();
+  const sub=new Set(ENTRIES.filter(e=>e.date===td).map(e=>e.ward));
+  const alerts=[];
+  ENTRIES.filter(e=>e.date===td).forEach(e=>{
+    if(e.bor>=100)          alerts.push({l:'clay',  i:'🔴', m:`<b>${e.wardName}</b>: at/over capacity — BOR ${pct(e.bor)}`});
+    else if(e.bor>=85)      alerts.push({l:'amber', i:'🟡', m:`<b>${e.wardName}</b>: near capacity — BOR ${pct(e.bor)}`});
+    if((e.mortality||0)>=2) alerts.push({l:'clay',  i:'🔴', m:`<b>${e.wardName}</b>: ${e.mortality} mortality reported today`});
+    if((e.absconded||0)>0)  alerts.push({l:'amber', i:'🟡', m:`<b>${e.wardName}</b>: ${e.absconded} patient(s) absconded today`});
+  });
+  WARDS.forEach(w=>{ if(!sub.has(w.code)) alerts.push({l:'ink',i:'⚪',m:`<b>${w.name}</b>: no entry submitted for today`}); });
+
+  const el=document.getElementById('alerts-list');
+  el.innerHTML=alerts.length?alerts.map(a=>`
+    <div style="display:flex;align-items:flex-start;gap:11px;padding:12px 14px;border:1px solid var(--line);
+      border-radius:var(--rsm);margin-bottom:8px;
+      background:${a.l==='clay'?'var(--clay-bg)':a.l==='amber'?'var(--amber-bg)':'var(--parch2)'}">
+      <span style="font-size:1.05rem;line-height:1.6">${a.i}</span>
+      <span style="font-size:.85rem;font-weight:600;line-height:1.6;color:${a.l==='clay'?'var(--clay)':a.l==='amber'?'#8a6206':'var(--soft)'}">${a.m}</span>
+    </div>`).join(''):
+    '<div class="empty"><div class="ei">✅</div><p>No active alerts — all wards reporting normally today.</p></div>';
+}
+
+/* ══ USERS PAGE ══ */
+async function renderUsersPage(){
+  try{
+    const snap=await fb.getDocs(fb.collection(fb.db,'users'));
+    USERS_CACHE=snap.docs.map(d=>({id:d.id,...d.data()}))
+      .sort((a,b)=>a.role.localeCompare(b.role)||a.username.localeCompare(b.username));
+  } catch(e){showToast('Error loading users: '+e.message,'error');return;}
+
+  document.getElementById('users-tbody').innerHTML=USERS_CACHE.map(u=>`<tr>
+    <td><b style="font-family:var(--mono);font-size:.86rem">${u.username}</b></td>
+    <td>${u.fullName||'—'}</td>
+    <td><span class="badge b-blue">${rlbl(u.role)}</span></td>
+    <td>${u.ward?(WBC[u.ward]?.name||u.ward):'—'}</td>
+    <td>${u.active===false?'<span class="badge b-clay">Disabled</span>':'<span class="badge b-sage">Active</span>'}</td>
+    <td style="font-size:.76rem;color:var(--soft)">${u.createdAt?.toDate?u.createdAt.toDate().toLocaleDateString('en-GB'):'—'}</td>
+    <td><div style="display:flex;gap:6px">
+      <button class="btn btn-ghost btn-sm" onclick="openUserModal('${u.id}')">Edit</button>
+      ${u.role!=='superadmin'?`<button class="btn btn-clay btn-sm" onclick="delUser('${u.id}','${u.username}')">Del</button>`:''}
+    </div></td>
+  </tr>`).join('');
+}
+
+window.openUserModal=function(editId){
+  const ed=editId?USERS_CACHE.find(u=>u.id===editId):null;
+  const wo=WARDS.map(w=>`<option value="${w.code}" ${ed?.ward===w.code?'selected':''}>${w.name}</option>`).join('');
+  document.getElementById('modal-root').innerHTML=`
+    <div class="mo" onclick="if(event.target===this)closeModal()">
+      <div class="mbox">
+        <h3>${ed?'Edit account':'New account'}</h3>
+        <p class="mdesc">${ed?'Update details for this user.':'Create a login for ward staff or an admin.'}</p>
+        <div class="field"><label>Username</label>
+          <input id="m-un" value="${ed?.username||''}" ${ed?'disabled':''} placeholder="e.g. nicu-ward" oninput="this.value=this.value.toLowerCase().replace(/\s+/g,'-')">
+        </div>
+        <div class="field"><label>Full name</label><input id="m-fn" value="${ed?.fullName||''}" placeholder="e.g. NICU Ward Staff"></div>
+        <div class="field"><label>Password${ed?' — leave blank to keep current':''}</label>
+          <div class="pw-wrap"><input type="password" id="m-pw" placeholder="${ed?'Leave blank':'Set a password'}"><button type="button" class="pw-toggle" onclick="togglePw('m-pw',this)">SHOW</button></div>
+        </div>
+        <div class="field"><label>Role</label>
+          <select id="m-role" onchange="document.getElementById('m-wrow').style.display=this.value==='ward'?'block':'none'">
+            <option value="ward"       ${ed?.role==='ward'?'selected':''}>Ward staff</option>
+            <option value="admin"      ${ed?.role==='admin'?'selected':''}>Hospital admin</option>
+            <option value="superadmin" ${ed?.role==='superadmin'?'selected':''}>Super admin</option>
+          </select>
+        </div>
+        <div id="m-wrow" style="display:${(!ed||ed.role==='ward')?'block':'none'}">
+          <div class="field"><label>Assigned ward</label><select id="m-ward">${wo}</select></div>
+        </div>
+        ${ed?`<div class="field"><label>Status</label>
+          <select id="m-act"><option value="true" ${ed.active!==false?'selected':''}>Active</option>
+          <option value="false" ${ed.active===false?'selected':''}>Disabled</option></select></div>`:''}
+        <div class="mact">
+          <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveUser('${ed?ed.id:''}')">Save account</button>
+        </div>
+      </div>
+    </div>`;
+};
+
+window.saveUser=async function(editId){
+  const un=document.getElementById('m-un').value.trim();
+  const fn=document.getElementById('m-fn').value.trim();
+  const pw=document.getElementById('m-pw').value;
+  const role=document.getElementById('m-role').value;
+  const ward=role==='ward'?document.getElementById('m-ward').value:null;
+  if(!un){showToast('Username is required.','error');return;}
+  if(!fn){showToast('Full name is required.','error');return;}
+  if(!editId&&!pw){showToast('Password is required for new accounts.','error');return;}
+  try{
+    if(editId){
+      const p={fullName:fn,role,ward};
+      if(pw) p.password=pw;
+      const asel=document.getElementById('m-act'); if(asel) p.active=asel.value==='true';
+      await fb.updateDoc(fb.doc(fb.db,'users',editId),p);
+      showToast('✓ Account updated.');
+    } else {
+      const q=fb.query(fb.collection(fb.db,'users'),fb.where('username','==',un));
+      if(!(await fb.getDocs(q)).empty){showToast('Username already exists.','error');return;}
+      await fb.addDoc(fb.collection(fb.db,'users'),{username:un,fullName:fn,password:pw,role,ward,active:true,createdAt:fb.serverTimestamp()});
+      showToast('✓ Account created. Share the username and password with the user.');
+    }
+    closeModal(); renderUsersPage();
+  } catch(e){showToast('Error: '+e.message,'error');}
+};
+
+window.delUser=async function(id,un){
+  if(!confirm(`Permanently delete account "${un}"?`)) return;
+  try{await fb.deleteDoc(fb.doc(fb.db,'users',id));showToast('Deleted.');renderUsersPage();}
+  catch(e){showToast('Error: '+e.message,'error');}
+};
+
+/* ══ WARDS PAGE ══ */
+function renderWardsPage(){
+  document.getElementById('wards-tbody').innerHTML=WARDS.map(w=>`<tr>
+    <td><b>${w.name}</b></td>
+    <td><span class="badge b-ink" style="font-family:var(--mono);font-size:.7rem">${w.code}</span></td>
+    <td><b style="font-family:var(--mono)">${w.beds}</b></td>
+    <td>${w.hasMortality?'<span class="badge b-sage">Yes</span>':'<span class="badge b-ink">No</span>'}</td>
+    <td>${w.hasAbsconded?'<span class="badge b-sage">Yes</span>':'<span class="badge b-ink">No</span>'}</td>
+    <td><button class="btn btn-ghost btn-sm" onclick="openWardModal('${w.id}')">Edit</button></td>
+  </tr>`).join('');
+}
+
+window.openWardModal=function(editId){
+  const ed=editId?WARDS.find(w=>w.id===editId):null;
+  document.getElementById('modal-root').innerHTML=`
+    <div class="mo" onclick="if(event.target===this)closeModal()">
+      <div class="mbox">
+        <h3>${ed?'Edit ward':'New ward'}</h3>
+        <p class="mdesc">Bed count determines BOR. Code must be unique, lowercase, underscores only.</p>
+        <div class="field"><label>Ward name</label><input id="w-n" value="${ed?.name||''}" placeholder="e.g. Surgical Ward"></div>
+        <div class="field"><label>Code (internal, unique)</label>
+          <input id="w-c" value="${ed?.code||''}" ${ed?'disabled':''} placeholder="e.g. surgical" oninput="this.value=this.value.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'')">
+        </div>
+        <div class="field"><label>Number of beds</label><input type="number" id="w-b" min="0" value="${ed?.beds??0}"></div>
+        <div class="field"><label>Track mortality?</label>
+          <select id="w-m"><option value="true" ${ed?.hasMortality?'selected':''}>Yes</option><option value="false" ${ed&&!ed.hasMortality?'selected':''}>No</option></select>
+        </div>
+        <div class="field"><label>Track absconded patients?</label>
+          <select id="w-a"><option value="true" ${ed?.hasAbsconded?'selected':''}>Yes</option><option value="false" ${ed&&!ed.hasAbsconded?'selected':''}>No</option></select>
+        </div>
+        <div class="mact">
+          <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveWard('${ed?ed.id:''}')">Save ward</button>
+        </div>
+      </div>
+    </div>`;
+};
+
+window.saveWard=async function(editId){
+  const name=document.getElementById('w-n').value.trim();
+  const code=document.getElementById('w-c').value.trim();
+  const beds=parseInt(document.getElementById('w-b').value)||0;
+  const hasMortality=document.getElementById('w-m').value==='true';
+  const hasAbsconded=document.getElementById('w-a').value==='true';
+  if(!name||!code){showToast('Name and code are required.','error');return;}
+  try{
+    if(editId){
+      await fb.updateDoc(fb.doc(fb.db,'wards',editId),{name,beds,hasMortality,hasAbsconded});
+      showToast('✓ Ward updated.');
+    } else {
+      const order=Math.max(0,...WARDS.map(w=>w.order||0))+1;
+      await fb.addDoc(fb.collection(fb.db,'wards'),{name,code,beds,hasMortality,hasAbsconded,order});
+      showToast('✓ Ward created.');
+    }
+    await loadWards(); closeModal(); renderWardsPage();
+  } catch(e){showToast('Error: '+e.message,'error');}
+};
+
+/* ══ MY ACCOUNT ══ */
+function renderAccountPage(){
+  document.getElementById('ac-uname').value=currentUser.username;
+  document.getElementById('ac-fname').value=currentUser.fullName||'';
+  document.getElementById('ac-pw').value='';
+}
+window.saveAccount=async function(){
+  const fn=document.getElementById('ac-fname').value.trim();
+  const pw=document.getElementById('ac-pw').value;
+  if(!fn){showToast('Full name is required.','error');return;}
+  const payload={fullName:fn}; if(pw) payload.password=pw;
+  try{
+    if(currentUser.id!=='fallback') await fb.updateDoc(fb.doc(fb.db,'users',currentUser.id),payload);
+    currentUser={...currentUser,...payload};
+    document.getElementById('u-nm').textContent=fn;
+    document.getElementById('u-av').textContent=ini(fn);
+    showToast('✓ Account saved.'); document.getElementById('ac-pw').value='';
+  } catch(e){showToast('Error: '+e.message,'error');}
+};
+
+/* ══ ENTER KEY on login ══ */
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&document.getElementById('login-page').style.display!=='none')
+    if(['lu','lp'].includes(document.activeElement?.id)) doLogin();
+});
+</script>
+</body>
+</html>
