@@ -301,6 +301,15 @@ table.dt tfoot td{font-weight:800;background:var(--t50);border-top:2px solid var
 .tgl button:last-child{border-right:none}
 .tgl button.active{background:var(--t900);color:#fff}
 .crit-warn{background:var(--clay-bg);border:1.5px solid #f2c4be;border-radius:var(--rsm);padding:11px 14px;margin-top:14px;font-size:.83rem;color:var(--clay);font-weight:700}
+/* Calendar */
+#cal-grid > div:hover{ box-shadow:0 4px 14px rgba(11,79,74,.14) }
+@media(max-width:480px){ #cal-grid{ gap:2px } #cal-grid > div{ min-height:56px; padding:5px 6px } }
+/* ── Calendar ── */
+@media(max-width:600px){
+  #cal-grid{ grid-template-columns:repeat(7,1fr)!important; gap:2px!important; }
+  #cal-grid > div{ min-height:44px!important; padding:4px!important; font-size:.7rem!important; }
+}
+
 @media print{
   @page{size:A4 portrait;margin:12mm 14mm}
   body *{visibility:hidden}
@@ -632,6 +641,66 @@ table.dt tfoot td{font-weight:800;background:var(--t50);border-top:2px solid var
       </div>
     </div>
 
+    <!-- ─── PAGE: CALENDAR / HISTORICAL ENTRY ─── -->
+    <div class="page" id="page-calendar">
+
+      <!-- Calendar navigation -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:12px">
+            <button class="btn btn-ghost btn-sm" onclick="calNav(-1)">◀ Prev</button>
+            <div>
+              <div style="font-family:var(--serif);font-size:1.2rem;font-weight:700;color:var(--t900)" id="cal-title">Month Year</div>
+              <div style="font-size:.76rem;color:var(--soft)" id="cal-ward-label">—</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="calNav(1)">Next ▶</button>
+            <button class="btn btn-ghost btn-sm" onclick="calGoToday()">Today</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:.76rem;color:var(--soft)">Jump to:</span>
+            <select id="cal-jump-month" onchange="calJump()" style="padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;font-size:.8rem;font-family:var(--sans)">
+              <option value="0">January</option><option value="1">February</option><option value="2">March</option>
+              <option value="3">April</option><option value="4">May</option><option value="5">June</option>
+              <option value="6">July</option><option value="7">August</option><option value="8">September</option>
+              <option value="9">October</option><option value="10">November</option><option value="11">December</option>
+            </select>
+            <select id="cal-jump-year" onchange="calJump()" style="padding:6px 9px;border:1.5px solid var(--line);border-radius:7px;font-size:.8rem;font-family:var(--sans)"></select>
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;font-size:.74rem;font-weight:700">
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:var(--sage-bg);border:1.5px solid var(--sage);border-radius:3px;display:inline-block"></span>Submitted</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:var(--clay-bg);border:1.5px solid var(--clay);border-radius:3px;display:inline-block"></span>Critical</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:var(--amber-bg);border:1.5px solid var(--amber);border-radius:3px;display:inline-block"></span>Missing</span>
+          <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:var(--parch2);border:1.5px solid var(--line);border-radius:3px;display:inline-block"></span>Future / N/A</span>
+        </div>
+      </div>
+
+      <!-- Calendar grid -->
+      <div class="card" style="padding:14px">
+        <div id="cal-grid-wrap">
+          <!-- day headers -->
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">
+            <div style="text-align:center;font-size:.7rem;font-weight:800;color:var(--t700);padding:6px 0;text-transform:uppercase;letter-spacing:.5px">Mon</div>
+            <div style="text-align:center;font-size:.7rem;font-weight:800;color:var(--t700);padding:6px 0;text-transform:uppercase;letter-spacing:.5px">Tue</div>
+            <div style="text-align:center;font-size:.7rem;font-weight:800;color:var(--t700);padding:6px 0;text-transform:uppercase;letter-spacing:.5px">Wed</div>
+            <div style="text-align:center;font-size:.7rem;font-weight:800;color:var(--t700);padding:6px 0;text-transform:uppercase;letter-spacing:.5px">Thu</div>
+            <div style="text-align:center;font-size:.7rem;font-weight:800;color:var(--t700);padding:6px 0;text-transform:uppercase;letter-spacing:.5px">Fri</div>
+            <div style="text-align:center;font-size:.7rem;font-weight:800;color:var(--soft);padding:6px 0;text-transform:uppercase;letter-spacing:.5px">Sat</div>
+            <div style="text-align:center;font-size:.7rem;font-weight:800;color:var(--soft);padding:6px 0;text-transform:uppercase;letter-spacing:.5px">Sun</div>
+          </div>
+          <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px"></div>
+        </div>
+      </div>
+
+      <!-- Monthly summary strip -->
+      <div class="card">
+        <div class="card-head"><h3 id="cal-summary-title">Month summary</h3></div>
+        <div class="stat-grid" id="cal-summary-stats"></div>
+      </div>
+    </div>
+
   </div><!-- /main -->
 </div><!-- /app-shell -->
 
@@ -839,6 +908,7 @@ const NAV = {
       {id:'reports',  ic:'🗂️',l:'Reports'},
       {id:'summary',  ic:'📈',l:'Summary & Trends'},
       {id:'alerts',   ic:'🚨',l:'Alerts'},
+      {id:'calendar', ic:'📅',l:'Calendar / History'},
     ]},
     {g:'Administration', items:[
       {id:'users',   ic:'👥',l:'User Accounts'},
@@ -852,23 +922,28 @@ const NAV = {
       {id:'reports',  ic:'🗂️',l:'Reports'},
       {id:'summary',  ic:'📈',l:'Summary & Trends'},
       {id:'alerts',   ic:'🚨',l:'Alerts'},
+      {id:'calendar', ic:'📅',l:'Calendar / History'},
     ]},
     {g:'Account', items:[{id:'account',ic:'⚙️',l:'My Account'}]},
   ],
   ward:[
-    {g:'Ward', items:[{id:'entry',ic:'📝',l:'Daily Entry'}]},
+    {g:'Ward', items:[
+      {id:'entry',    ic:'📝',l:'Daily Entry'},
+      {id:'calendar', ic:'📅',l:'Calendar / History'},
+    ]},
     {g:'Account', items:[{id:'account',ic:'⚙️',l:'My Account'}]},
   ],
 };
 const PMETA = {
-  entry:    {t:'Daily Ward Entry',      d:"Submit today's census data for your ward"},
-  dashboard:{t:'Dashboard',             d:'Live hospital-wide bed state'},
-  reports:  {t:'Reports',               d:'Browse and export historical census records'},
-  summary:  {t:'Summary & Trends',      d:'Aggregated statistics and patient flow'},
-  alerts:   {t:'Alerts',               d:'Wards needing immediate attention'},
-  users:    {t:'User Accounts',         d:'Create and manage staff logins'},
-  wards:    {t:'Ward Configuration',    d:'Bed capacities and ward settings'},
-  account:  {t:'My Account',            d:'Update your profile and password'},
+  entry:    {t:'Daily Ward Entry',         d:"Submit today's census data for your ward"},
+  dashboard:{t:'Dashboard',               d:'Live hospital-wide bed state'},
+  reports:  {t:'Reports',                 d:'Browse and export historical census records'},
+  summary:  {t:'Summary & Trends',        d:'Aggregated statistics and patient flow'},
+  alerts:   {t:'Alerts',                  d:'Wards needing immediate attention'},
+  calendar: {t:'Calendar / History',      d:'Browse past dates and enter or edit historical data'},
+  users:    {t:'User Accounts',           d:'Create and manage staff logins'},
+  wards:    {t:'Ward Configuration',      d:'Bed capacities and ward settings'},
+  account:  {t:'My Account',              d:'Update your profile and password'},
 };
 
 function buildNav(){
@@ -895,6 +970,7 @@ window.switchPage = function(id){
     reports:  ()=>renderReportsPage(),
     summary:  ()=>renderSummary(),
     alerts:   ()=>renderAlerts(),
+    calendar: ()=>renderCalendarPage(),
     users:    ()=>renderUsersPage(),
     wards:    ()=>renderWardsPage(),
     account:  ()=>renderAccountPage(),
@@ -1329,19 +1405,25 @@ function drawLineChart(areaId, xAxisId, labels, series, title, subtitle, ward, i
     <line x1="${PL}" y1="${y100}" x2="${W-PR}" y2="${y100}" stroke="var(--clay)" stroke-width="1" stroke-dasharray="6,4" opacity=".7"/>
     <text x="${W-PR+2}" y="${y100+4}" font-size="8" fill="var(--clay)">100%</text>`;
 
-  const svgHTML=`<div style="overflow-x:auto"><svg viewBox="0 0 ${W+40} ${H}" style="width:100%;min-width:320px;display:block">
-    ${gridLines}${thresholds}${yLabels}${paths}${dots}
+  // Build x-axis labels INSIDE the SVG so they appear on print too
+  const skip = n > 20 ? Math.ceil(n/20) : 1;
+  let xLabelsInSVG = '';
+  const svgH = H + 22; // extra height for x-axis text
+  labels.forEach((lbl, i) => {
+    if (i % skip !== 0 && i !== n-1) return;
+    const x = PL + (n > 1 ? i * xStep : cW/2);
+    const displayLbl = isAnnual ? lbl : lbl.slice(5); // annual: "Jan", monthly: "MM-DD" → "DD"
+    xLabelsInSVG += `<text x="${x}" y="${PT+cH+14}" text-anchor="middle" font-size="${n>20?'7':'9'}" fill="#5C6B67">${displayLbl}</text>`;
+  });
+
+  const svgHTML=`<div style="overflow-x:auto"><svg viewBox="0 0 ${W+40} ${svgH}" style="width:100%;min-width:320px;display:block">
+    ${gridLines}${thresholds}${yLabels}${paths}${dots}${xLabelsInSVG}
     <line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT+cH}" stroke="#D8EAE7" stroke-width="1.5"/>
     <line x1="${PL}" y1="${PT+cH}" x2="${W-PR}" y2="${PT+cH}" stroke="#D8EAE7" stroke-width="1.5"/>
   </svg></div>`;
 
   document.getElementById(areaId).innerHTML=svgHTML;
-
-  // X-axis labels
-  const skip=n>20?Math.ceil(n/20):1;
-  document.getElementById(xAxisId).innerHTML=`<div style="display:flex;padding-left:${PL}px;padding-right:${PR+40}px;overflow:hidden">
-    ${labels.map((l,i)=>i%skip===0||i===n-1?`<div style="flex:${n>1?xStep:cW/2}px 0 0;font-size:${n>20?'7':'8.5'}px;color:var(--soft);text-align:center;white-space:nowrap;overflow:hidden;min-width:0">${isAnnual?l:l.slice(5)}</div>`:'').join('')}
-  </div>`;
+  document.getElementById(xAxisId).innerHTML=''; // no longer needed, labels are in SVG
 
   // Legend
   document.getElementById('r-chart-legend').innerHTML=activeSeries.length<=10?activeSeries.map(s=>`
@@ -1682,6 +1764,378 @@ window.saveAccount=async function(){
     document.getElementById('u-av').textContent=ini(fn);
     showToast('✓ Account saved.'); document.getElementById('ac-pw').value='';
   } catch(e){showToast('Error: '+e.message,'error');}
+};
+
+
+
+/* ══════════════════════════════════════════════════════
+   CALENDAR / HISTORICAL ENTRY
+══════════════════════════════════════════════════════ */
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-indexed
+
+const CAL_MONTHS = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+
+function renderCalendarPage(){
+  // Populate year jump dropdown
+  const yr = new Date().getFullYear();
+  const ysel = document.getElementById('cal-jump-year');
+  if(!ysel.dataset.built){
+    ysel.innerHTML = Array.from({length:6},(_,i)=>
+      `<option value="${yr-i}" ${i===0?'selected':''}>${yr-i}</option>`).join('');
+    ysel.dataset.built='1';
+  }
+  renderCalendar();
+}
+
+function renderCalendar(){
+  const wc   = currentUser.role==='ward' ? currentUser.ward : null;
+  const ward = wc ? (WBC[wc]||{}) : null;
+
+  document.getElementById('cal-title').textContent =
+    CAL_MONTHS[calMonth]+' '+calYear;
+  document.getElementById('cal-ward-label').textContent =
+    wc ? (ward?.name||wc) : 'All wards — click a day to select a ward and enter data';
+
+  // Sync jump dropdowns
+  document.getElementById('cal-jump-month').value = calMonth;
+  document.getElementById('cal-jump-year').value  = calYear;
+
+  // Build date map from ENTRIES cache
+  const prefix = `${calYear}-${String(calMonth+1).padStart(2,'0')}`;
+  const entryMap = {}; // date → [entries]
+  ENTRIES.filter(e => e.date.startsWith(prefix)).forEach(e => {
+    if(!entryMap[e.date]) entryMap[e.date]=[];
+    entryMap[e.date].push(e);
+  });
+
+  // Days in month, first weekday (Mon=0)
+  const firstDay = new Date(calYear, calMonth, 1).getDay(); // Sun=0
+  const startOffset = (firstDay===0) ? 6 : firstDay-1;      // shift to Mon=0
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const todayStr2   = today();
+
+  let cells = '';
+
+  // Empty cells before first day
+  for(let i=0;i<startOffset;i++){
+    cells += `<div style="min-height:72px;border-radius:8px;background:transparent"></div>`;
+  }
+
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday   = dateStr===todayStr2;
+    const isFuture  = dateStr>todayStr2;
+    const dayEntries= entryMap[dateStr]||[];
+    const hasCrit   = dayEntries.some(e=>e.isCritical);
+    const hasEntry  = dayEntries.length>0;
+
+    // Colour scheme
+    let bg, border, textCol;
+    if(isFuture){
+      bg='#F8F8F5'; border='var(--line)'; textCol='var(--soft)';
+    } else if(hasCrit){
+      bg='var(--clay-bg)'; border='var(--clay)'; textCol='var(--clay)';
+    } else if(hasEntry){
+      bg='var(--sage-bg)'; border='var(--sage)'; textCol='#3a6348';
+    } else {
+      bg='var(--amber-bg)'; border='var(--amber)'; textCol='#8a6206';
+    }
+
+    const todayRing = isToday
+      ? 'box-shadow:0 0 0 3px var(--t700);' : '';
+
+    // Mini BOR dots for submitted wards
+    let dots = '';
+    if(hasEntry && !wc){
+      // Show first 5 ward dots
+      dayEntries.slice(0,5).forEach((e,i)=>{
+        const dc = e.bor>=100?'var(--clay)':e.bor>=85?'var(--amber)':'var(--sage)';
+        dots += `<span title="${e.wardName}: ${Math.round(e.bor)}% BOR"
+          style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dc};margin:1px"></span>`;
+      });
+      if(dayEntries.length>5) dots+=`<span style="font-size:.6rem;color:var(--soft)">+${dayEntries.length-5}</span>`;
+    } else if(hasEntry && wc){
+      const e=dayEntries[0];
+      dots=`<div style="font-family:var(--mono);font-size:.65rem;font-weight:700;color:${textCol};margin-top:2px">${Math.round(e.bor)}% BOR</div>
+            <div style="font-size:.62rem;color:${textCol}">Pat: ${e.patients}</div>`;
+    }
+
+    const clickable = !isFuture;
+    cells += `<div onclick="${clickable?`openDayModal('${dateStr}')`:''}"
+      style="min-height:72px;border-radius:8px;background:${bg};border:1.5px solid ${border};
+      padding:7px 8px;${todayRing}cursor:${clickable?'pointer':'default'};
+      transition:transform .1s,box-shadow .1s;position:relative"
+      onmouseover="if(${clickable})this.style.transform='translateY(-1px)'"
+      onmouseout="this.style.transform=''">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <span style="font-family:var(--serif);font-size:${isToday?'1rem':'.88rem'};font-weight:${isToday?'800':'700'};color:${isToday?'var(--t900)':textCol}">${d}</span>
+        ${hasCrit?'<span style="font-size:.7rem">⚠️</span>':hasEntry?'<span style="font-size:.7rem">✓</span>':''}
+      </div>
+      <div style="margin-top:4px">${dots}</div>
+    </div>`;
+  }
+
+  document.getElementById('cal-grid').innerHTML = cells;
+
+  // Monthly summary
+  renderCalMonthlySummary(prefix, entryMap);
+}
+
+function renderCalMonthlySummary(prefix, entryMap){
+  const days  = Object.keys(entryMap);
+  const allE  = days.flatMap(d=>entryMap[d]);
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const submDays = days.length;
+  const missDays = Math.max(0, Math.min(new Date().getDate(), daysInMonth) - submDays);
+  const avgBor   = allE.length ? allE.reduce((s,e)=>s+(e.bor||0),0)/allE.length : 0;
+  const totAdm   = allE.reduce((s,e)=>s+(e.admissions||0),0);
+  const totDisch = allE.reduce((s,e)=>s+(e.discharges||0),0);
+  const totMort  = allE.reduce((s,e)=>s+(e.mortality||0),0);
+  const critDays = days.filter(d=>entryMap[d].some(e=>e.isCritical)).length;
+
+  document.getElementById('cal-summary-title').textContent =
+    `${CAL_MONTHS[calMonth]} ${calYear} — summary`;
+  document.getElementById('cal-summary-stats').innerHTML=`
+    <div class="stat s-sage"><div class="val">${submDays}</div><div class="lbl">Days submitted</div></div>
+    <div class="stat s-amber"><div class="val">${missDays}</div><div class="lbl">Days missing</div></div>
+    <div class="stat"><div class="val">${pct(avgBor)}</div><div class="lbl">Avg BOR</div></div>
+    <div class="stat s-sage"><div class="val">${totAdm}</div><div class="lbl">Total admissions</div></div>
+    <div class="stat s-blue"><div class="val">${totDisch}</div><div class="lbl">Total discharges</div></div>
+    <div class="stat s-clay"><div class="val">${totMort}</div><div class="lbl">Total mortality</div></div>
+    <div class="stat s-clay"><div class="val">${critDays}</div><div class="lbl">Critical days</div></div>`;
+}
+
+window.calNav = function(dir){
+  calMonth += dir;
+  if(calMonth>11){calMonth=0; calYear++;}
+  if(calMonth<0) {calMonth=11; calYear--;}
+  renderCalendar();
+};
+window.calGoToday = function(){
+  calYear=new Date().getFullYear(); calMonth=new Date().getMonth();
+  renderCalendar();
+};
+window.calJump = function(){
+  calMonth = parseInt(document.getElementById('cal-jump-month').value);
+  calYear  = parseInt(document.getElementById('cal-jump-year').value);
+  renderCalendar();
+};
+
+/* ── Day modal: view + edit entry for a specific date ── */
+window.openDayModal = async function(dateStr){
+  // Determine which ward — ward staff use their own, others must pick
+  const wc = currentUser.role==='ward' ? currentUser.ward : null;
+
+  const existing = ENTRIES.filter(e=>e.date===dateStr && (!wc||e.ward===wc));
+  const isFuture = dateStr > today();
+  const displayDate = new Date(dateStr+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+
+  if(currentUser.role==='ward' && !wc){
+    showToast('No ward assigned to your account.','error'); return;
+  }
+
+  // For superadmin/admin opening a day: show all ward entries + allow adding
+  if(currentUser.role!=='ward'){
+    renderAdminDayModal(dateStr, displayDate, existing);
+    return;
+  }
+
+  // Ward staff — single ward entry form for that date
+  renderWardDayModal(dateStr, displayDate, wc, existing[0]||null);
+};
+
+function renderWardDayModal(dateStr, displayDate, wc, existingEntry){
+  const meta = WBC[wc];
+  if(!meta){showToast('Ward not found.','error');return;}
+  const e = existingEntry;
+  const isFuture = dateStr > today();
+
+  const fval = (field, fallback=0) => e ? (e[field]??fallback) : fallback;
+
+  document.getElementById('modal-root').innerHTML=`
+    <div class="mo" onclick="if(event.target===this)closeModal()">
+      <div class="mbox" style="max-width:560px">
+        <h3>${e?'Edit':'New'} entry — ${meta.name}</h3>
+        <p class="mdesc" style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--mono);font-size:.78rem;background:var(--t50);color:var(--t700);padding:3px 9px;border-radius:6px;font-weight:700">${dateStr}</span>
+          ${displayDate}
+        </p>
+        ${isFuture?'<div style="background:var(--amber-bg);border:1.5px solid var(--amber);border-radius:8px;padding:9px 13px;font-size:.82rem;color:#8a6206;font-weight:700;margin-bottom:12px">⚠ This is a future date. Are you sure you want to add an entry?</div>':''}
+        ${e?`<div style="background:var(--sage-bg);border:1px solid var(--sage);border-radius:8px;padding:8px 12px;font-size:.78rem;color:#3a6348;margin-bottom:12px">✓ Entry exists — last submitted by <b>${e.submittedBy||'unknown'}</b>. Editing will overwrite it.</div>`:''}
+
+        <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:12px">
+          ${dayField('dm-pat',  'Patients (census)', fval('patients'))}
+          ${dayField('dm-adm',  'Admissions',        fval('admissions'))}
+          ${dayField('dm-dis',  'Discharges',        fval('discharges'))}
+          ${dayField('dm-tin',  'Transfers In',      fval('transferIn'))}
+          ${dayField('dm-tout', 'Transfers Out',     fval('transferOut'))}
+          ${meta.hasMortality ? dayField('dm-mort','Mortality',fval('mortality')) : ''}
+          ${meta.hasAbsconded ? dayField('dm-absc','Absconded',fval('absconded')) : ''}
+          ${dayAutoField('dm-empty','Empty Beds (auto)', fval('empty'))}
+          ${dayAutoField('dm-bor',  'BOR % (auto)',      fval('bor',0).toFixed(1)+'%')}
+        </div>
+
+        <div id="dm-crit-warn" class="crit-warn hidden">⚠ Will be flagged as critical.</div>
+
+        <div class="mact" style="justify-content:space-between;align-items:center">
+          ${e?`<button class="btn btn-clay btn-sm" onclick="deleteEntry('${e.id}','${dateStr}','${wc}')">🗑 Delete entry</button>`:'<span></span>'}
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveDayEntry('${dateStr}','${wc}','${e?e.id:''}')">
+              ${e?'Update entry':'Save entry'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  // Wire up auto-calc
+  ['dm-pat','dm-mort','dm-absc'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.addEventListener('input', calcDayModal);
+  });
+  calcDayModal();
+}
+
+function dayField(id, label, val){
+  return `<div class="ef" style="text-align:center">
+    <label>${label}</label>
+    <input id="${id}" type="number" min="0" value="${val}" style="font-size:1.1rem" oninput="calcDayModal()">
+  </div>`;
+}
+function dayAutoField(id, label, val){
+  return `<div class="ef auto" style="text-align:center">
+    <label>${label}</label>
+    <input id="${id}" type="text" value="${val}" readonly style="font-size:1.1rem">
+  </div>`;
+}
+
+window.calcDayModal = function(){
+  // figure out ward from modal context
+  const wc2 = currentUser.role==='ward' ? currentUser.ward : document.getElementById('dm-ward-sel')?.value;
+  const meta2 = WBC[wc2]; if(!meta2) return;
+  const pat  = parseInt(document.getElementById('dm-pat')?.value)||0;
+  const mort = parseInt(document.getElementById('dm-mort')?.value)||0;
+  const absc = parseInt(document.getElementById('dm-absc')?.value)||0;
+  const empty= Math.max(0, meta2.beds-pat);
+  const bor  = meta2.beds>0 ? pat/meta2.beds*100 : 0;
+  const crit = mort>=2||absc>0||bor>=100;
+  const eEl=document.getElementById('dm-empty'), bEl=document.getElementById('dm-bor');
+  if(eEl) eEl.value=empty;
+  if(bEl) bEl.value=pct(bor);
+  const cw=document.getElementById('dm-crit-warn');
+  if(cw) cw.classList.toggle('hidden',!crit);
+};
+
+window.saveDayEntry = async function(dateStr, wc, existingId){
+  const meta = WBC[wc]; if(!meta){showToast('Ward not found.','error');return;}
+  const g = id => parseInt(document.getElementById(id)?.value)||0;
+  const pat=g('dm-pat'), adm=g('dm-adm'), dis=g('dm-dis'), tin=g('dm-tin'), tout=g('dm-tout');
+  const mort=meta.hasMortality?g('dm-mort'):0, absc=meta.hasAbsconded?g('dm-absc'):0;
+  const empty=Math.max(0,meta.beds-pat), bor=meta.beds>0?pat/meta.beds*100:0;
+  const isCritical=mort>=2||absc>0||bor>=100;
+
+  const payload={
+    ward:wc, wardName:meta.name, date:dateStr, beds:meta.beds,
+    patients:pat, admissions:adm, discharges:dis, transferIn:tin, transferOut:tout,
+    mortality:mort, absconded:absc, empty, bor, isCritical,
+    submittedBy: currentUser.fullName||currentUser.username,
+    submittedAt: fb.serverTimestamp()
+  };
+
+  try{
+    if(existingId){
+      await fb.updateDoc(fb.doc(fb.db,'entries',existingId), payload);
+      showToast('✓ Entry updated for '+dateStr);
+    } else {
+      // check no duplicate exists already
+      const q=fb.query(fb.collection(fb.db,'entries'),fb.where('ward','==',wc),fb.where('date','==',dateStr));
+      const snap=await fb.getDocs(q);
+      if(!snap.empty){
+        await fb.updateDoc(fb.doc(fb.db,'entries',snap.docs[0].id), payload);
+        showToast('✓ Entry updated for '+dateStr);
+      } else {
+        await fb.addDoc(fb.collection(fb.db,'entries'), payload);
+        showToast('✓ Entry saved for '+dateStr);
+      }
+    }
+    closeModal();
+    renderCalendar();
+  } catch(err){showToast('Error: '+err.message,'error');}
+};
+
+window.deleteEntry = async function(entryId, dateStr, wc){
+  if(!confirm(`Delete the entry for ${dateStr} — ${WBC[wc]?.name||wc}? This cannot be undone.`)) return;
+  try{
+    await fb.deleteDoc(fb.doc(fb.db,'entries',entryId));
+    showToast('Entry deleted.');
+    closeModal();
+    renderCalendar();
+  } catch(err){showToast('Error: '+err.message,'error');}
+};
+
+/* ── Admin day modal: see all wards + pick one to edit ── */
+function renderAdminDayModal(dateStr, displayDate, existing){
+  const rows = WARDS.map(w=>{
+    const e = existing.find(x=>x.ward===w.code);
+    return {w, e};
+  });
+
+  document.getElementById('modal-root').innerHTML=`
+    <div class="mo" onclick="if(event.target===this)closeModal()">
+      <div class="mbox" style="max-width:640px">
+        <h3>Ward entries — ${displayDate}</h3>
+        <p class="mdesc">Select a ward to add or edit its entry for this date.</p>
+        <div style="margin-bottom:14px">
+          <div class="tw"><table class="dt">
+            <thead><tr><th>Ward</th><th>Beds</th><th>Patients</th><th>BOR</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+            ${rows.map(({w,e})=>`<tr>
+              <td><b>${w.name}</b></td>
+              <td>${w.beds}</td>
+              <td>${e?e.patients:'—'}</td>
+              <td>${e?`<b style="color:${e.bor>=100?'var(--clay)':e.bor>=85?'var(--amber)':'var(--t700)'}">${pct(e.bor)}</b>`:'—'}</td>
+              <td>${e?(e.isCritical?'<span class="badge b-clay">⚠ Critical</span>':'<span class="badge b-sage">✓ Submitted</span>'):'<span class="badge b-amber">Missing</span>'}</td>
+              <td>
+                <button class="btn btn-${e?'ghost':'primary'} btn-sm"
+                  onclick="closeModal();openWardDayFromAdmin('${dateStr}','${displayDate}','${w.code}')">
+                  ${e?'Edit':'Add'}
+                </button>
+              </td>
+            </tr>`).join('')}
+            </tbody>
+          </table></div>
+        </div>
+        <div class="mact"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>
+      </div>
+    </div>`;
+
+  // Store entries in a global lookup so edit buttons can reference them
+  window.__calDayEntries = {};
+  rows.forEach(({w,e})=>{ if(e) window.__calDayEntries[w.code]=e; });
+}
+
+window.openWardDayFromAdmin = function(dateStr, displayDate, wc){
+  const existing = window.__calDayEntries?.[wc] || null;
+  renderWardDayModal(dateStr, displayDate, wc, existing);
+};
+
+
+/* ── Admin: open a specific ward's entry form for a date ── */
+window.openWardDayFromAdmin = function(dateStr, displayDate, wc){
+  closeModal();
+  const existingEntry = (window.__calDayEntries?.[wc])
+    || ENTRIES.find(e => e.date===dateStr && e.ward===wc)
+    || null;
+  setTimeout(()=>renderWardDayModal(dateStr, displayDate, wc, existingEntry), 50);
+};
+
+/* ── Admin: pick ward from day overview then open ward form ── */
+window.adminPickWard = function(dateStr, displayDate, wardCode){
+  const e = (window.__calDayEntries||{})[wardCode] || null;
+  closeModal();
+  renderWardDayModal(dateStr, displayDate, wardCode, e);
 };
 
 /* ══ ENTER KEY on login ══ */
