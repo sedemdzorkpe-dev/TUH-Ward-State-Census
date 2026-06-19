@@ -2807,7 +2807,7 @@ window.submitEntry = async function(){
       new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
     renderEntryHistory();
   } catch(err){ showToast('Error: '+err.message,'error'); }
-  finally{ btn.disabled=false; btn.textContent='✓ Submit Today's Entry'; }
+  finally{ btn.disabled=false; btn.textContent="✓ Submit Today's Entry"; }
 };
 
 /* ── Patch saveDayEntry to use writeEntry ── */
