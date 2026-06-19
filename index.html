@@ -6,6 +6,25 @@
 <title>TUH Ward Census — Tema Urban Hospital</title>
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 
+<!-- PWA manifest -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B4F4A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TUH Ward Census">
+
+<script>
+// Register service worker for offline support
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.warn('SW registration failed:', err));
+  });
+}
+</script>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
@@ -314,11 +333,15 @@ table.dt tfoot td{font-weight:800;background:var(--t50);border-top:2px solid var
   @page{size:A4 portrait;margin:12mm 14mm}
   body *{visibility:hidden}
   #print-zone,#print-zone *{visibility:visible}
+  #sum-print-area,#sum-print-area *{visibility:visible}
   #print-zone{position:fixed;top:0;left:0;width:100%;padding:0;font-size:9pt}
+  #sum-print-area{position:fixed;top:0;left:0;width:100%;padding:0;font-size:9pt}
   .no-print{display:none!important}
   #print-header{display:block!important}
   #print-sigs{display:block!important}
   #r-print-chart{display:block!important}
+  #sum-print-header{display:block!important}
+  #sum-print-sigs{display:block!important}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 </style>
@@ -391,7 +414,14 @@ table.dt tfoot td{font-weight:800;background:var(--t50);border-top:2px solid var
           <div class="desc" id="pg-desc">Hospital-wide ward overview</div>
         </div>
       </div>
-      <div class="topbar-r">
+      <div class="topbar-r" style="display:flex;align-items:center;gap:10px">
+        <div id="sync-pill" style="display:none;align-items:center;gap:6px;font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--amber-bg);color:#8a6206;border:1px solid var(--amber)">
+          <span id="sync-dot" style="width:7px;height:7px;border-radius:50%;background:var(--amber);display:inline-block"></span>
+          <span id="sync-label">Offline</span>
+        </div>
+        <div id="pending-pill" style="display:none;align-items:center;gap:6px;font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue);cursor:pointer" onclick="syncNow()">
+          ⬆ <span id="pending-count">0</span> pending — Sync now
+        </div>
         <span style="font-family:var(--mono);font-size:.75rem;color:var(--soft)" id="clock">—</span>
       </div>
     </div>
@@ -450,6 +480,11 @@ table.dt tfoot td{font-weight:800;background:var(--t50);border-top:2px solid var
     <div class="page" id="page-reports">
       <!-- Filter bar -->
       <div class="fbar no-print">
+        <label>View</label>
+        <select id="r-view" onchange="onReportViewChange()" style="padding:7px 10px;border:1.5px solid var(--t100);border-radius:7px;font-size:.82rem;font-family:var(--sans);background:#fff">
+          <option value="ward">By Ward</option>
+          <option value="facility">Facility Overall BOR</option>
+        </select>
         <label>Ward</label>
         <select id="r-ward" onchange="renderReports()"></select>
         <label>Period</label>
@@ -562,29 +597,85 @@ table.dt tfoot td{font-weight:800;background:var(--t50);border-top:2px solid var
 
     <!-- ─── PAGE: SUMMARY ─── -->
     <div class="page" id="page-summary">
-      <div class="fbar">
+      <div class="fbar no-print" style="gap:12px;flex-wrap:wrap">
         <label>Period</label>
-        <div class="tgl" id="sum-period">
-          <button class="active" data-p="7">7 days</button>
-          <button data-p="30">30 days</button>
-          <button data-p="90">90 days</button>
-        </div>
+        <select id="sum-period" onchange="renderSummary()" style="padding:7px 10px;border:1.5px solid var(--t100);border-radius:7px;font-size:.82rem;font-family:var(--sans);background:#fff">
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="bimonth">Bi-monthly (2 months)</option>
+          <option value="q1">Quarter 1 (Jan–Mar)</option>
+          <option value="q2">Quarter 2 (Apr–Jun)</option>
+          <option value="q3">Quarter 3 (Jul–Sep)</option>
+          <option value="q4">Quarter 4 (Oct–Dec)</option>
+          <option value="half1">Half Year 1 (Jan–Jun)</option>
+          <option value="half2">Half Year 2 (Jul–Dec)</option>
+          <option value="annual">Full Year (Jan–Dec)</option>
+          <option value="90">Last 90 days</option>
+        </select>
+        <label>Year</label>
+        <select id="sum-year" onchange="renderSummary()" style="padding:7px 10px;border:1.5px solid var(--t100);border-radius:7px;font-size:.82rem;font-family:var(--sans);background:#fff"></select>
         <label>Ward</label>
-        <select id="sum-ward"></select>
-        <button class="btn btn-ghost btn-sm" onclick="renderSummary()">Refresh</button>
+        <select id="sum-ward" onchange="renderSummary()" style="padding:7px 10px;border:1.5px solid var(--t100);border-radius:7px;font-size:.82rem;font-family:var(--sans);background:#fff"></select>
+        <button class="btn btn-amber btn-sm no-print" onclick="printSummary()">🖨 Print</button>
       </div>
-      <div class="stat-grid" id="sum-stats"></div>
-      <div class="card">
-        <div class="card-head"><h3>Average BOR trend</h3><span class="sub" id="sum-trend-lbl"></span></div>
-        <div id="sum-trend"></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><h3>Admissions vs Discharges</h3></div>
-        <div id="sum-flow"></div>
-      </div>
-      <div class="card">
-        <div class="card-head"><h3>Ward ranking — average BOR (selected period)</h3></div>
-        <div id="sum-rank"></div>
+
+      <div id="sum-print-area">
+        <!-- Print header (hidden on screen) -->
+        <div id="sum-print-header" style="display:none">
+          <div style="text-align:center;margin-bottom:14px;padding-bottom:12px;border-bottom:3px double #1B7A72">
+            <img id="sum-print-logo" style="width:66px;height:66px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 8px">
+            <div style="font-family:Georgia,serif;font-size:14pt;font-weight:bold;color:#0B4F4A;text-transform:uppercase;letter-spacing:1px">Tema Urban Hospital</div>
+            <div style="font-size:9pt;color:#555;margin-top:2px">P.M.Bag Tema Community 2 · Tel: 0302944398 · Ghana Health Service</div>
+          </div>
+          <div style="text-align:center;background:#0B4F4A;color:white;padding:6px;font-size:10pt;font-weight:bold;letter-spacing:2px;margin-bottom:12px">BOR SUMMARY & TRENDS REPORT</div>
+          <div style="display:flex;justify-content:space-between;font-size:8.5pt;margin-bottom:14px;padding:0 4px" id="sum-ph-meta"></div>
+        </div>
+
+        <div class="stat-grid" id="sum-stats"></div>
+
+        <!-- Horizontal BOR bar chart -->
+        <div class="card" id="sum-chart-card">
+          <div class="card-head">
+            <div><h3 id="sum-chart-title">Average BOR Trend</h3><div class="sub" id="sum-chart-sub"></div></div>
+            <div style="display:flex;gap:8px;align-items:center" id="sum-legend"></div>
+          </div>
+          <div id="sum-chart-area"></div>
+        </div>
+
+        <!-- Flow chart -->
+        <div class="card">
+          <div class="card-head"><h3>Admissions vs Discharges</h3><div class="sub" id="sum-flow-sub"></div></div>
+          <div id="sum-flow"></div>
+        </div>
+
+        <!-- Ranking table -->
+        <div class="card">
+          <div class="card-head"><h3>Ward ranking — average BOR</h3></div>
+          <div id="sum-rank"></div>
+        </div>
+
+        <!-- Signature block for print -->
+        <div id="sum-print-sigs" style="display:none;margin-top:28px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;padding:0 20px">
+            <div>
+              <div style="font-size:8pt;font-weight:bold;color:#0B4F4A;text-transform:uppercase;letter-spacing:.5px;margin-bottom:36px">Ward In-charge / Nurse In-charge</div>
+              <div style="border-top:1.5px solid #555;padding-top:6px">
+                <div style="font-size:8pt">Name: ___________________________________</div>
+                <div style="font-size:8pt;margin-top:10px">Signature: ______________________________</div>
+                <div style="font-size:8pt;margin-top:10px">Date: ___________________________________</div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:8pt;font-weight:bold;color:#0B4F4A;text-transform:uppercase;letter-spacing:.5px;margin-bottom:36px">Head of Nursing &amp; Midwifery Services</div>
+              <div style="border-top:1.5px solid #555;padding-top:6px">
+                <div style="font-size:8pt">Name: ___________________________________</div>
+                <div style="font-size:8pt;margin-top:10px">Signature: ______________________________</div>
+                <div style="font-size:8pt;margin-top:10px">Date: ___________________________________</div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:16px;text-align:center;font-size:7.5pt;color:#888">Generated by TUH Ward Census System · Tema Urban Hospital · Ghana Health Service</div>
+        </div>
       </div>
     </div>
 
@@ -882,6 +973,8 @@ function afterLogin(){
     ? (WBC[currentUser.ward]?.name||currentUser.ward||'—') : rlbl(currentUser.role);
   document.getElementById('role-tag').textContent = rlbl(currentUser.role);
   subscribeEntries();
+  // Init offline support (opens IDB, checks connectivity, loads cache if offline)
+  if(window.__initOffline) window.__initOffline();
   switchPage(currentUser.role==='ward'?'entry':'dashboard');
 }
 
@@ -889,13 +982,21 @@ function afterLogin(){
 function subscribeEntries(){
   if(unsubEntries) unsubEntries();
   try{
-    unsubEntries = fb.onSnapshot(fb.collection(fb.db,'entries'), snap=>{
+    // Ward staff only receive their own ward's entries — no cross-ward data leakage.
+    // Admin and superadmin receive all entries for dashboard, reports and summary.
+    const isWardRole = currentUser.role === 'ward';
+    const ref = isWardRole
+      ? fb.query(fb.collection(fb.db,'entries'), fb.where('ward','==', currentUser.ward))
+      : fb.collection(fb.db,'entries');
+
+    unsubEntries = fb.onSnapshot(ref, snap=>{
       ENTRIES = snap.docs.map(d=>({id:d.id,...d.data()}));
       const pg = document.querySelector('.page.active')?.id?.replace('page-','');
       if(pg==='dashboard') renderDashboard();
       if(pg==='entry')     renderEntryHistory();
       if(pg==='alerts')    renderAlerts();
       if(pg==='summary')   renderSummary();
+      if(pg==='calendar')  renderCalendar();
     }, e=>console.error('entries snap:',e.message));
   } catch(e){ console.error('subscribeEntries:',e.message); }
 }
@@ -982,6 +1083,13 @@ window.closeSB = ()=>{ document.getElementById('sidebar').classList.remove('open
 
 /* ══ ENTRY PAGE ══ */
 function renderEntryPage(){
+  if(currentUser.role !== 'ward'){
+    document.getElementById('e-wardname').textContent = 'Entry form is for ward staff only';
+    document.getElementById('e-bedsbadge').textContent='—';
+    document.getElementById('e-datelbl').textContent='';
+    document.getElementById('e-grid').innerHTML='<p style="color:var(--soft);font-size:.84rem">Only ward staff accounts can submit entries. Use the Dashboard to view all ward data.</p>';
+    document.getElementById('e-hist').innerHTML=''; return;
+  }
   const wc=currentUser.ward, meta=WBC[wc];
   document.getElementById('e-wardname').textContent = meta?meta.name:'No ward assigned';
   document.getElementById('e-bedsbadge').textContent = meta?meta.beds+' beds':'—';
@@ -1024,6 +1132,7 @@ window.onEI = function(){
 };
 
 window.submitEntry = async function(){
+  if(currentUser.role !== 'ward'){showToast('Only ward staff can submit entries.','error');return;}
   const wc=currentUser.ward, meta=WBC[wc];
   if(!meta){showToast('No ward assigned.','error');return;}
   const g = id => parseInt(document.getElementById(id)?.value)||0;
@@ -1053,7 +1162,9 @@ window.submitEntry = async function(){
 
 function renderEntryHistory(){
   const wc=currentUser.ward, meta=WBC[wc];
-  const rows=ENTRIES.filter(e=>e.ward===wc).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,21);
+  // Guard: only show entries belonging to this ward (belt-and-suspenders)
+  const rows=ENTRIES.filter(e=>e.ward===wc && e.ward===currentUser.ward)
+    .sort((a,b)=>b.date.localeCompare(a.date)).slice(0,21);
   const el=document.getElementById('e-hist');
   if(!rows.length){el.innerHTML='<div class="empty"><div class="ei">📋</div><p>No entries yet for this ward.</p></div>';return;}
   el.innerHTML=`<div class="tw"><table class="dt"><thead><tr>
@@ -1181,14 +1292,139 @@ function renderReportsPage(){
   renderReports();
 }
 
-window.renderReports=function(){
-  const period=document.querySelector('#r-period button.active')?.dataset.rp||'range';
-  const ward=document.getElementById('r-ward').value;
+window.onReportViewChange = function(){
+  const view    = document.getElementById('r-view').value;
+  const wardSel = document.getElementById('r-ward');
+  const wardLbl = wardSel ? wardSel.previousElementSibling : null;
+  // Hide ward selector for facility view
+  if(wardSel)  wardSel.style.display  = view==='facility' ? 'none' : '';
+  if(wardLbl && wardLbl.tagName==='LABEL') wardLbl.style.display = view==='facility' ? 'none' : '';
+  renderReports();
+};
 
-  if(period==='range')   renderRangeReport(ward);
+window.renderReports=function(){
+  const period = document.querySelector('#r-period button.active')?.dataset.rp||'range';
+  const view   = document.getElementById('r-view')?.value||'ward';
+  const ward   = document.getElementById('r-ward').value;
+
+  if(view==='facility'){
+    renderFacilityBorReport(period);
+    return;
+  }
+  if(period==='range')        renderRangeReport(ward);
   else if(period==='monthly') renderMonthlyChart(ward);
   else if(period==='annual')  renderAnnualChart(ward);
 };
+
+
+function barRow(label, val, max, color, display, empty){
+  const w = empty ? 0 : Math.max(2, Math.min(val/max*100, 100));
+  return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
+    <div style="width:120px;text-align:right;font-size:.8rem;font-weight:700;color:var(--t900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0" title="${label}">${label}</div>
+    <div style="flex:1;background:var(--parch2);border-radius:5px;height:22px;overflow:hidden;position:relative">
+      <div style="width:${w}%;height:100%;background:${color};border-radius:5px;transition:width .4s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:7px;min-width:${empty?0:36}px">
+        ${!empty?`<span style="font-size:.72rem;font-weight:800;color:#fff;white-space:nowrap">${display}</span>`:''}
+      </div>
+      ${empty?`<span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.72rem;color:var(--soft)">No data</span>`:''}
+    </div>
+  </div>`;
+}
+
+function subBarRow(label, val, max, color, display){
+  const w = Math.max(1, Math.min(val/max*100, 100));
+  return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;padding-left:8px">
+    <div style="width:112px;text-align:right;font-size:.68rem;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0">${label}</div>
+    <div style="flex:1;background:var(--parch2);border-radius:4px;height:14px;overflow:hidden">
+      <div style="width:${w}%;height:100%;background:${color};opacity:.75;border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:5px;min-width:28px">
+        <span style="font-size:.64rem;font-weight:700;color:#fff">${display}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+
+/* ── FACILITY OVERALL BOR report ── */
+function renderFacilityBorReport(period){
+  // Hide chart card — facility view uses its own table + bar chart
+  document.getElementById('r-chart-card').style.display='block';
+
+  const from = document.getElementById('r-from').value;
+  const to   = document.getElementById('r-to').value;
+
+  // Group all entries by date, sum occupied/beds → facility BOR per day
+  const dateMap = {};
+  ENTRIES.filter(e=>(!from||e.date>=from)&&(!to||e.date<=to)).forEach(e=>{
+    if(!dateMap[e.date]) dateMap[e.date]={totalBeds:0, totalPatients:0, entries:[]};
+    dateMap[e.date].totalBeds    += (e.beds||0);
+    dateMap[e.date].totalPatients+= (e.patients||0);
+    dateMap[e.date].entries.push(e);
+  });
+
+  const dates = Object.keys(dateMap).sort();
+  document.getElementById('r-count').textContent = dates.length + ' day(s) with data';
+
+  // Build chart using horizontal bars (reuse barRow)
+  document.getElementById('r-chart-title').textContent = 'Facility Overall BOR';
+  document.getElementById('r-chart-sub').textContent   = `${from||'—'} to ${to||'—'} · All wards combined`;
+  document.getElementById('r-chart-legend').innerHTML  = '';
+
+  if(!dates.length){
+    document.getElementById('r-chart-area').innerHTML =
+      '<div class="empty"><div class="ei">📊</div><p>No data for this date range.</p></div>';
+  } else {
+    const rows = dates.map(d=>{
+      const {totalBeds,totalPatients} = dateMap[d];
+      const bor = totalBeds>0 ? totalPatients/totalBeds*100 : 0;
+      const col = bor>=100?'var(--clay)':bor>=85?'var(--amber)':'var(--t700)';
+      return barRow(d, bor, 100, col, pct(bor), false);
+    }).join('');
+    document.getElementById('r-chart-area').innerHTML=`<div style="padding:4px 0">${rows}</div>`;
+  }
+
+  // Summary stats
+  const allFacility = dates.map(d=>({
+    date:d,
+    bor: dateMap[d].totalBeds>0 ? dateMap[d].totalPatients/dateMap[d].totalBeds*100 : 0,
+    totalBeds:dateMap[d].totalBeds, totalPatients:dateMap[d].totalPatients,
+    wards:dateMap[d].entries.length,
+    adm:  dateMap[d].entries.reduce((s,e)=>s+(e.admissions||0),0),
+    disch:dateMap[d].entries.reduce((s,e)=>s+(e.discharges||0),0),
+    mort: dateMap[d].entries.reduce((s,e)=>s+(e.mortality||0),0),
+    absc: dateMap[d].entries.reduce((s,e)=>s+(e.absconded||0),0),
+  }));
+
+  // Build table header
+  document.getElementById('r-thead').innerHTML=`<tr>
+    <th>Date</th><th>Wards reported</th><th>Total beds</th><th>Total patients</th>
+    <th>Facility BOR</th><th>Total Adm.</th><th>Total Disch.</th><th>Mortality</th><th>Absconded</th>
+  </tr>`;
+
+  // Build table body
+  document.getElementById('r-tbody').innerHTML = allFacility.length
+    ? allFacility.map(r=>`<tr>
+        <td style="font-family:var(--mono);font-size:.78rem"><b>${r.date}</b></td>
+        <td>${r.wards}/${WARDS.length}</td>
+        <td>${r.totalBeds}</td>
+        <td>${r.totalPatients}</td>
+        <td><b style="color:${r.bor>=100?'var(--clay)':r.bor>=85?'var(--amber)':'var(--t700)'};font-size:.95rem">${pct(r.bor)}</b></td>
+        <td>${r.adm}</td><td>${r.disch}</td><td>${r.mort}</td><td>${r.absc}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--soft)">No data for this range.</td></tr>';
+
+  // Footer totals / averages
+  if(allFacility.length){
+    const avgBor  = allFacility.reduce((s,r)=>s+r.bor,0)/allFacility.length;
+    const totAdm  = allFacility.reduce((s,r)=>s+r.adm,0);
+    const totDisch= allFacility.reduce((s,r)=>s+r.disch,0);
+    const totMort = allFacility.reduce((s,r)=>s+r.mort,0);
+    const totAbsc = allFacility.reduce((s,r)=>s+r.absc,0);
+    document.getElementById('r-tfoot').innerHTML=`<tr>
+      <td>AVERAGE / TOTAL</td><td>—</td><td>—</td><td>—</td>
+      <td><b style="color:${avgBor>=100?'var(--clay)':avgBor>=85?'var(--amber)':'var(--t700)'}">${pct(avgBor)}</b></td>
+      <td>${totAdm}</td><td>${totDisch}</td><td>${totMort}</td><td>${totAbsc}</td>
+    </tr>`;
+  }
+}
 
 /* ── Date-range report (original table view) ── */
 function renderRangeReport(ward){
@@ -1482,87 +1718,278 @@ window.exportCSV=function(){
   a.click(); showToast('Exported '+rows.length+' records.');
 };
 
-/* ══ SUMMARY ══ */
-function renderSummary(){
-  const swel=document.getElementById('sum-ward');
-  if(!swel.dataset.built){
-    swel.innerHTML='<option value="">Hospital-wide</option>'+WARDS.map(w=>`<option value="${w.code}">${w.name}</option>`).join('');
-    swel.dataset.built='1'; swel.onchange=renderSummary;
-    document.querySelectorAll('#sum-period button').forEach(b=>b.onclick=()=>{
-      document.querySelectorAll('#sum-period button').forEach(x=>x.classList.remove('active'));
-      b.classList.add('active'); sumDays=parseInt(b.dataset.p); renderSummary();
-    });
-  }
-  const ward=swel.value;
-  const cut=new Date(); cut.setDate(cut.getDate()-sumDays);
-  const cutS=cut.toISOString().split('T')[0];
-  const rows=ENTRIES.filter(e=>e.date>=cutS&&(!ward||e.ward===ward));
+/* ══ SUMMARY & TRENDS ══ */
 
-  const tA=rows.reduce((s,e)=>s+(e.admissions||0),0);
-  const tD=rows.reduce((s,e)=>s+(e.discharges||0),0);
-  const tM=rows.reduce((s,e)=>s+(e.mortality||0),0);
-  const tAb=rows.reduce((s,e)=>s+(e.absconded||0),0);
-  const avgB=rows.length?rows.reduce((s,e)=>s+(e.bor||0),0)/rows.length:0;
-  const critN=rows.filter(e=>e.isCritical).length;
+const SUM_MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const SUM_FULL_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+/* ── Compute date range from period selector ── */
+function getSumRange(){
+  const period = document.getElementById('sum-period')?.value || '30';
+  const yr     = parseInt(document.getElementById('sum-year')?.value || new Date().getFullYear());
+  let fromStr, toStr, xLabels=null, groupBy='day';
+
+  const ymd = (y,m,d) => `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const daysInMonth = (y,m) => new Date(y,m,0).getDate();
+
+  if(period==='7'||period==='30'||period==='90'){
+    const days = parseInt(period);
+    const to   = new Date(); to.setHours(0,0,0,0);
+    const from = new Date(to); from.setDate(from.getDate()-(days-1));
+    fromStr = from.toISOString().split('T')[0];
+    toStr   = to.toISOString().split('T')[0];
+    groupBy = 'day';
+  } else if(period==='bimonth'){
+    const curMo = new Date().getMonth(); // 0-indexed
+    const startMo = Math.floor(curMo/2)*2;
+    fromStr = ymd(yr, startMo+1, 1);
+    toStr   = ymd(yr, startMo+2, daysInMonth(yr, startMo+2));
+    xLabels = [SUM_FULL_MONTHS[startMo], SUM_FULL_MONTHS[startMo+1]];
+    groupBy = 'month';
+  } else if(period==='q1'){ fromStr=ymd(yr,1,1);  toStr=ymd(yr,3,31);  xLabels=['January','February','March'];     groupBy='month'; }
+  else if(period==='q2'){ fromStr=ymd(yr,4,1);  toStr=ymd(yr,6,30);  xLabels=['April','May','June'];              groupBy='month'; }
+  else if(period==='q3'){ fromStr=ymd(yr,7,1);  toStr=ymd(yr,9,30);  xLabels=['July','August','September'];       groupBy='month'; }
+  else if(period==='q4'){ fromStr=ymd(yr,10,1); toStr=ymd(yr,12,31); xLabels=['October','November','December'];   groupBy='month'; }
+  else if(period==='half1'){ fromStr=ymd(yr,1,1); toStr=ymd(yr,6,30);  xLabels=SUM_FULL_MONTHS.slice(0,6);  groupBy='month'; }
+  else if(period==='half2'){ fromStr=ymd(yr,7,1); toStr=ymd(yr,12,31); xLabels=SUM_FULL_MONTHS.slice(6,12); groupBy='month'; }
+  else if(period==='annual'){ fromStr=ymd(yr,1,1); toStr=ymd(yr,12,31); xLabels=SUM_FULL_MONTHS; groupBy='month'; }
+
+  return {period, yr, fromStr, toStr, xLabels, groupBy};
+}
+
+/* ── Period display label ── */
+function periodLabel(period, yr){
+  const map={
+    '7':'Last 7 days','30':'Last 30 days','90':'Last 90 days',
+    'bimonth':'Bi-monthly','q1':`Q1 ${yr} (Jan–Mar)`,'q2':`Q2 ${yr} (Apr–Jun)`,
+    'q3':`Q3 ${yr} (Jul–Sep)`,'q4':`Q4 ${yr} (Oct–Dec)`,
+    'half1':`H1 ${yr} (Jan–Jun)`,'half2':`H2 ${yr} (Jul–Dec)`,'annual':`Full Year ${yr}`
+  };
+  return map[period]||period;
+}
+
+function renderSummary(){
+  /* ── populate selectors once ── */
+  const wsel = document.getElementById('sum-ward');
+  if(!wsel.dataset.built){
+    wsel.innerHTML='<option value="">All wards</option>'+
+      WARDS.map(w=>`<option value="${w.code}">${w.name}</option>`).join('');
+    wsel.dataset.built='1';
+  }
+  const ysel = document.getElementById('sum-year');
+  if(!ysel.dataset.built){
+    const yr = new Date().getFullYear();
+    ysel.innerHTML = Array.from({length:6},(_,i)=>
+      `<option value="${yr-i}" ${i===0?'selected':''}>${yr-i}</option>`).join('');
+    ysel.dataset.built='1';
+  }
+
+  const {period, yr, fromStr, toStr, xLabels, groupBy} = getSumRange();
+  const ward  = wsel.value;
+  const rows  = ENTRIES.filter(e=>e.date>=fromStr && e.date<=toStr && (!ward||e.ward===ward));
+  const pLbl  = periodLabel(period, yr);
+
+  /* ── stat strip ── */
+  const tA    = rows.reduce((s,e)=>s+(e.admissions||0),0);
+  const tD    = rows.reduce((s,e)=>s+(e.discharges||0),0);
+  const tM    = rows.reduce((s,e)=>s+(e.mortality||0),0);
+  const tAb   = rows.reduce((s,e)=>s+(e.absconded||0),0);
+  const avgB  = rows.length ? rows.reduce((s,e)=>s+(e.bor||0),0)/rows.length : 0;
+  const critN = rows.filter(e=>e.isCritical).length;
 
   document.getElementById('sum-stats').innerHTML=`
-    <div class="stat"><div class="val">${pct(avgB)}</div><div class="lbl">Avg BOR</div></div>
+    <div class="stat">      <div class="val">${pct(avgB)}</div><div class="lbl">Avg BOR</div></div>
     <div class="stat s-sage"><div class="val">${tA}</div><div class="lbl">Total admissions</div></div>
     <div class="stat s-blue"><div class="val">${tD}</div><div class="lbl">Total discharges</div></div>
     <div class="stat s-clay"><div class="val">${tM}</div><div class="lbl">Mortality</div></div>
     <div class="stat s-amber"><div class="val">${tAb}</div><div class="lbl">Absconded</div></div>
     <div class="stat s-amber"><div class="val">${critN}</div><div class="lbl">Critical entries</div></div>`;
 
-  // BOR trend
-  document.getElementById('sum-trend-lbl').textContent=ward?WBC[ward]?.name||ward:'All wards — daily average';
-  const bD={}; rows.forEach(e=>{bD[e.date]=bD[e.date]||{s:0,n:0}; bD[e.date].s+=(e.bor||0); bD[e.date].n++;});
-  const dates=Object.keys(bD).sort();
-  document.getElementById('sum-trend').innerHTML=dates.length?dates.map(d=>{
-    const avg=bD[d].s/bD[d].n, col=avg>=100?'var(--clay)':avg>=85?'var(--amber)':'var(--t700)';
-    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
-      <div style="width:92px;font-size:.72rem;color:var(--soft);font-family:var(--mono)">${d}</div>
-      <div style="flex:1;background:var(--parch2);border-radius:5px;height:20px;overflow:hidden">
-        <div style="width:${Math.max(2,avg)}%;max-width:100%;height:100%;background:${col};border-radius:5px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;min-width:38px">
-          <span style="font-size:.68rem;font-weight:700;color:#fff">${pct(avg)}</span>
-        </div>
-      </div></div>`;
-  }).join(''):'<div class="empty"><div class="ei">📈</div><p>No data yet for this period.</p></div>';
+  document.getElementById('sum-chart-title').textContent = `Average BOR — ${pLbl}`;
+  document.getElementById('sum-chart-sub').textContent   =
+    ward ? (WBC[ward]?.name||ward) : 'All wards';
+  document.getElementById('sum-flow-sub').textContent = pLbl;
 
-  // Flow chart
-  const fEl=document.getElementById('sum-flow');
-  if(!ward){
-    const wM={}; WARDS.forEach(w=>wM[w.code]={a:0,d:0,n:w.name});
-    rows.forEach(e=>{if(wM[e.ward]){wM[e.ward].a+=(e.admissions||0);wM[e.ward].d+=(e.discharges||0);}});
-    const mx=Math.max(...Object.values(wM).flatMap(v=>[v.a,v.d]),1);
-    fEl.innerHTML=WARDS.map(w=>{
-      const v=wM[w.code];
+  /* ── Build x-labels and aggregate data ── */
+  let chartLabels, chartData; // chartData: {label → {wardCode → avgBor}}
+
+  if(groupBy==='month'){
+    // xLabels already set (e.g. ['January','February','March'])
+    // Find the month indices these labels correspond to
+    chartLabels = xLabels;
+    chartData   = {};
+    chartLabels.forEach(mName=>{
+      const mi   = SUM_FULL_MONTHS.indexOf(mName);
+      const mpfx = `${yr}-${String(mi+1).padStart(2,'0')}`;
+      chartData[mName] = {};
+      const targetWards = ward ? [WBC[ward]].filter(Boolean) : WARDS;
+      targetWards.forEach(w=>{
+        const wr = ENTRIES.filter(e=>e.ward===w.code && e.date.startsWith(mpfx));
+        chartData[mName][w.code] = wr.length
+          ? wr.reduce((s,e)=>s+(e.bor||0),0)/wr.length : null;
+      });
+    });
+  } else {
+    // groupBy = 'day' — aggregate by day
+    const days = [...new Set(rows.map(e=>e.date))].sort();
+    chartLabels = days;
+    chartData   = {};
+    days.forEach(d=>{
+      chartData[d]={};
+      const targetWards = ward ? [WBC[ward]].filter(Boolean) : WARDS;
+      targetWards.forEach(w=>{
+        const wr = rows.filter(e=>e.ward===w.code && e.date===d);
+        chartData[d][w.code] = wr.length
+          ? wr.reduce((s,e)=>s+(e.bor||0),0)/wr.length : null;
+      });
+    });
+  }
+
+  /* ── Draw horizontal bar chart ── */
+  drawHorizontalBorChart(chartLabels, chartData, ward);
+
+  /* ── Flow chart ── */
+  const targetWards2 = ward ? [WBC[ward]].filter(Boolean) : WARDS;
+  if(groupBy==='month'){
+    const flowData = chartLabels.map(mName=>{
+      const mi   = SUM_FULL_MONTHS.indexOf(mName);
+      const mpfx = `${yr}-${String(mi+1).padStart(2,'0')}`;
+      const wr   = ENTRIES.filter(e=>e.date.startsWith(mpfx)&&(!ward||e.ward===ward));
+      return {label:mName, adm:wr.reduce((s,e)=>s+(e.admissions||0),0),
+              disch:wr.reduce((s,e)=>s+(e.discharges||0),0)};
+    });
+    const maxF = Math.max(...flowData.flatMap(v=>[v.adm,v.disch]),1);
+    document.getElementById('sum-flow').innerHTML = flowData.map(f=>
+      `<div style="margin-bottom:10px">
+        <div style="font-size:.78rem;font-weight:700;color:var(--t900);margin-bottom:4px">${f.label}</div>
+        ${fBar('Adm.',f.adm,maxF,'var(--sage)')}${fBar('Disch.',f.disch,maxF,'var(--blue)')}
+      </div>`).join('');
+  } else {
+    const wMap={};
+    targetWards2.forEach(w=>wMap[w.code]={a:0,d:0,n:w.name});
+    rows.forEach(e=>{if(wMap[e.ward]){wMap[e.ward].a+=(e.admissions||0);wMap[e.ward].d+=(e.discharges||0);}});
+    const mx=Math.max(...Object.values(wMap).flatMap(v=>[v.a,v.d]),1);
+    document.getElementById('sum-flow').innerHTML=targetWards2.map(w=>{
+      const v=wMap[w.code];
       return `<div style="margin-bottom:11px">
         <div style="font-size:.78rem;font-weight:700;color:var(--t900);margin-bottom:4px">${w.name}</div>
         ${fBar('Adm.',v.a,mx,'var(--sage)')}${fBar('Disch.',v.d,mx,'var(--blue)')}
       </div>`;
     }).join('');
-  } else {
-    const dM={}; rows.forEach(e=>{dM[e.date]=dM[e.date]||{a:0,d:0}; dM[e.date].a+=(e.admissions||0); dM[e.date].d+=(e.discharges||0);});
-    const ds=Object.keys(dM).sort(), mx=Math.max(...ds.flatMap(d=>[dM[d].a,dM[d].d]),1);
-    fEl.innerHTML=ds.length?ds.map(d=>`<div style="margin-bottom:9px">
-      <div style="font-family:var(--mono);font-size:.71rem;color:var(--soft);margin-bottom:3px">${d}</div>
-      ${fBar('Adm.',dM[d].a,mx,'var(--sage)')}${fBar('Disch.',dM[d].d,mx,'var(--blue)')}
-    </div>`).join(''):'<div class="empty"><div class="ei">📊</div><p>No data yet.</p></div>';
   }
 
-  // Ranking
-  const rank=WARDS.map(w=>{
-    const wr=ENTRIES.filter(e=>e.date>=cutS&&e.ward===w.code);
+  /* ── Ranking table ── */
+  const ranking = WARDS.map(w=>{
+    const wr = ENTRIES.filter(e=>e.date>=fromStr&&e.date<=toStr&&e.ward===w.code);
     return {n:w.name, avg:wr.length?wr.reduce((s,e)=>s+(e.bor||0),0)/wr.length:0, cnt:wr.length};
   }).sort((a,b)=>b.avg-a.avg);
   document.getElementById('sum-rank').innerHTML=`<div class="tw"><table class="dt">
-    <thead><tr><th>#</th><th>Ward</th><th>Avg BOR</th><th>Entries in period</th></tr></thead>
-    <tbody>${rank.map((r,i)=>`<tr>
+    <thead><tr><th>#</th><th>Ward</th><th>Avg BOR</th><th>Entries</th></tr></thead>
+    <tbody>${ranking.map((r,i)=>`<tr>
       <td style="font-family:var(--mono)">${i+1}</td><td>${r.n}</td>
       <td><b style="color:${r.avg>=100?'var(--clay)':r.avg>=85?'var(--amber)':'var(--t700)'}">${r.cnt?pct(r.avg):'—'}</b></td>
       <td>${r.cnt}</td></tr>`).join('')}
     </tbody></table></div>`;
 }
+
+/* ── HORIZONTAL BAR CHART for BOR ── */
+function drawHorizontalBorChart(labels, dataMap, ward){
+  const el = document.getElementById('sum-chart-area');
+  if(!labels.length){
+    el.innerHTML='<div class="empty"><div class="ei">📊</div><p>No data for this period.</p></div>';
+    document.getElementById('sum-legend').innerHTML='';
+    return;
+  }
+
+  const targetWards = ward ? [WBC[ward]].filter(Boolean) : WARDS;
+  const COLORS = ['#1B7A72','#E0A526','#B5453A','#3D6B8C','#7FA88B',
+                  '#8B5CF6','#059669','#DC2626','#D97706','#0891B2'];
+
+  // For each label, compute avg BOR per ward (or single ward)
+  // Then draw one horizontal bar per label, grouped by ward if multiple
+  const isSingleWard = ward && targetWards.length===1;
+
+  let rows = '';
+  labels.forEach(lbl=>{
+    const vals = dataMap[lbl]||{};
+
+    if(isSingleWard){
+      const w   = targetWards[0];
+      const val = vals[w.code];
+      if(val===null||val===undefined){
+        rows += barRow(lbl, 0, 0, COLORS[0], '—', true);
+      } else {
+        rows += barRow(lbl, val, 100, COLORS[0], pct(val), false);
+      }
+    } else {
+      // Hospital-wide: show average across all submitted wards for this label
+      const submitted = targetWards.filter(w=>vals[w.code]!==null&&vals[w.code]!==undefined);
+      if(!submitted.length){
+        rows += barRow(lbl, 0, 100, '#ccc', '—', true);
+      } else {
+        const avg = submitted.reduce((s,w)=>s+(vals[w.code]||0),0)/submitted.length;
+        const col = avg>=100?'var(--clay)':avg>=85?'var(--amber)':'var(--t700)';
+        rows += barRow(lbl, avg, 100, col, pct(avg), false);
+
+        // If multiple wards, also show each ward as a smaller sub-bar
+        if(targetWards.length>1 && labels.length<=12){
+          targetWards.forEach((w,wi)=>{
+            const v=vals[w.code];
+            if(v===null||v===undefined) return;
+            const wc2=v>=100?'var(--clay)':v>=85?'var(--amber)':COLORS[wi%COLORS.length];
+            rows += subBarRow(w.name, v, 100, wc2, pct(v));
+          });
+          rows += `<div style="height:8px"></div>`; // spacing between label groups
+        }
+      }
+    }
+  });
+
+  el.innerHTML = `<div style="padding:4px 0">${rows}</div>`;
+
+  // Legend
+  if(!isSingleWard && targetWards.length>1 && labels.length<=12){
+    document.getElementById('sum-legend').innerHTML = targetWards.map((w,i)=>`
+      <div style="display:flex;align-items:center;gap:4px;font-size:.68rem;font-weight:700;color:var(--ink)">
+        <span style="width:12px;height:4px;background:${COLORS[i%COLORS.length]};border-radius:2px;display:inline-block"></span>
+        ${w.name}
+      </div>`).join('');
+  } else {
+    document.getElementById('sum-legend').innerHTML='';
+  }
+}
+
+/* ── Print summary ── */
+window.printSummary = function(){
+  const period  = document.getElementById('sum-period')?.value||'30';
+  const yr      = document.getElementById('sum-year')?.value||new Date().getFullYear();
+  const ward    = document.getElementById('sum-ward')?.value||'';
+  const pLbl    = periodLabel(period, yr);
+  const wardLbl = ward ? (WBC[ward]?.name||ward) : 'All Wards';
+
+  // Set print meta
+  document.getElementById('sum-ph-meta').innerHTML=
+    `<span><b>Period:</b> ${pLbl} &nbsp;|&nbsp; <b>Ward:</b> ${wardLbl}</span>
+     <span><b>Printed:</b> ${new Date().toLocaleString('en-GB')}</span>`;
+
+  // Embed logo
+  const logoEl = document.getElementById('sum-print-logo');
+  // Find the logo src from the sidebar crest img
+  const sidebarImg = document.querySelector('.sb-head .crest img');
+  if(sidebarImg) logoEl.src = sidebarImg.src;
+
+  // Show print-only sections
+  document.getElementById('sum-print-header').style.display='block';
+  document.getElementById('sum-print-sigs').style.display='block';
+
+  window.print();
+
+  // Hide again after print dialog
+  setTimeout(()=>{
+    document.getElementById('sum-print-header').style.display='none';
+    document.getElementById('sum-print-sigs').style.display='none';
+  }, 1000);
+};
 
 function fBar(label, val, max, color){
   return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
@@ -1925,9 +2352,11 @@ window.calJump = function(){
 
 /* ── Day modal: view + edit entry for a specific date ── */
 window.openDayModal = async function(dateStr){
-  // Determine which ward — ward staff use their own, others must pick
+  // Ward staff: strictly their own ward only — no data from other wards visible
   const wc = currentUser.role==='ward' ? currentUser.ward : null;
 
+  // For ward staff, ENTRIES already only contains their ward's data (filtered at subscription).
+  // For admin/superadmin, ENTRIES contains all wards — filter to the clicked date.
   const existing = ENTRIES.filter(e=>e.date===dateStr && (!wc||e.ward===wc));
   const isFuture = dateStr > today();
   const displayDate = new Date(dateStr+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
@@ -2136,6 +2565,287 @@ window.adminPickWard = function(dateStr, displayDate, wardCode){
   const e = (window.__calDayEntries||{})[wardCode] || null;
   closeModal();
   renderWardDayModal(dateStr, displayDate, wardCode, e);
+};
+
+/* ══════════════════════════════════════════════════════
+   OFFLINE SUPPORT — IndexedDB queue + sync
+══════════════════════════════════════════════════════ */
+
+const IDB_NAME    = 'tuh_ward_census';
+const IDB_VERSION = 1;
+const STORE_QUEUE = 'sync_queue';   // pending writes
+const STORE_CACHE = 'entries_cache';// local read cache
+
+let idb = null;
+
+/* ── Open IndexedDB ── */
+function openIDB(){
+  return new Promise((resolve, reject) => {
+    if(idb){ resolve(idb); return; }
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains(STORE_QUEUE)){
+        const qs = db.createObjectStore(STORE_QUEUE, {keyPath:'qid', autoIncrement:true});
+        qs.createIndex('date','date',{unique:false});
+      }
+      if(!db.objectStoreNames.contains(STORE_CACHE)){
+        const cs = db.createObjectStore(STORE_CACHE, {keyPath:'localKey'});
+        cs.createIndex('date','date',{unique:false});
+      }
+    };
+    req.onsuccess = e => { idb = e.target.result; resolve(idb); };
+    req.onerror   = e => { console.error('IDB error:', e); reject(e); };
+  });
+}
+
+function idbPut(storeName, record){
+  return openIDB().then(db => new Promise((res,rej) => {
+    const tx = db.transaction(storeName,'readwrite');
+    tx.objectStore(storeName).put(record).onsuccess = e => res(e.target.result);
+    tx.onerror = rej;
+  }));
+}
+function idbGetAll(storeName){
+  return openIDB().then(db => new Promise((res,rej) => {
+    const tx = db.transaction(storeName,'readonly');
+    const req = tx.objectStore(storeName).getAll();
+    req.onsuccess = e => res(e.target.result||[]);
+    req.onerror   = rej;
+  }));
+}
+function idbDelete(storeName, key){
+  return openIDB().then(db => new Promise((res,rej) => {
+    const tx = db.transaction(storeName,'readwrite');
+    tx.objectStore(storeName).delete(key).onsuccess = res;
+    tx.onerror = rej;
+  }));
+}
+function idbClear(storeName){
+  return openIDB().then(db => new Promise((res,rej) => {
+    const tx = db.transaction(storeName,'readwrite');
+    tx.objectStore(storeName).clear().onsuccess = res;
+    tx.onerror = rej;
+  }));
+}
+
+/* ── Online / offline detection ── */
+let isOnline = navigator.onLine;
+
+function updateOnlineStatus(){
+  isOnline = navigator.onLine;
+  const pill  = document.getElementById('sync-pill');
+  const dot   = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-label');
+  if(!pill) return;
+  if(isOnline){
+    pill.style.display='none';
+    // Auto-sync pending items when we come back online
+    syncNow();
+  } else {
+    pill.style.display='flex';
+    dot.style.background='var(--amber)';
+    label.textContent='Offline — data saved locally';
+  }
+}
+window.addEventListener('online',  updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+async function updatePendingBadge(){
+  const pending = await idbGetAll(STORE_QUEUE);
+  const pill  = document.getElementById('pending-pill');
+  const count = document.getElementById('pending-count');
+  if(!pill) return;
+  if(pending.length>0 && isOnline){
+    pill.style.display='flex';
+    count.textContent=pending.length;
+  } else {
+    pill.style.display='none';
+  }
+}
+
+/* ── Write entry: online → Firestore directly; offline → queue in IDB ── */
+async function writeEntry(payload, existingId){
+  if(isOnline){
+    try{
+      if(existingId){
+        await fb.updateDoc(fb.doc(fb.db,'entries',existingId), payload);
+      } else {
+        const q=fb.query(fb.collection(fb.db,'entries'),
+          fb.where('ward','==',payload.ward),fb.where('date','==',payload.date));
+        const snap=await fb.getDocs(q);
+        if(!snap.empty) await fb.updateDoc(fb.doc(fb.db,'entries',snap.docs[0].id), payload);
+        else            await fb.addDoc(fb.collection(fb.db,'entries'), payload);
+      }
+      // Also update local cache
+      const localKey=`${payload.ward}__${payload.date}`;
+      await idbPut(STORE_CACHE, {...payload, localKey, synced:true});
+      return {synced:true};
+    } catch(err){
+      console.warn('Firestore write failed, queuing locally:', err.message);
+      // Fall through to offline queue
+    }
+  }
+
+  // Offline (or Firestore failed) — save to IDB queue
+  const localKey=`${payload.ward}__${payload.date}`;
+  const queueItem={
+    ...payload,
+    localKey,
+    existingId: existingId||null,
+    queuedAt: new Date().toISOString(),
+    synced: false
+  };
+  await idbPut(STORE_QUEUE, queueItem);
+  await idbPut(STORE_CACHE, {...queueItem, localKey});
+
+  // Merge into in-memory ENTRIES so UI updates immediately
+  const idx = ENTRIES.findIndex(e=>e.ward===payload.ward && e.date===payload.date);
+  if(idx>=0) ENTRIES[idx]={...ENTRIES[idx],...payload, _offline:true};
+  else        ENTRIES.push({...payload, _offline:true, id:'offline_'+Date.now()});
+
+  await updatePendingBadge();
+  return {synced:false};
+}
+
+/* ── Sync queued entries to Firestore ── */
+window.syncNow = async function(){
+  if(!isOnline){ showToast('You are offline. Connect to sync.','warn'); return; }
+  const queue = await idbGetAll(STORE_QUEUE);
+  if(!queue.length){ showToast('Nothing to sync — all up to date.'); return; }
+
+  const pill  = document.getElementById('sync-pill');
+  const label = document.getElementById('sync-label');
+  if(pill){ pill.style.display='flex'; label.textContent=`Syncing ${queue.length} item(s)…`; }
+
+  let synced=0, failed=0;
+  for(const item of queue){
+    // Remove local-only fields before writing to Firestore
+    const {qid, localKey, queuedAt, synced:_s, _offline, ...payload} = item;
+    try{
+      if(item.existingId){
+        await fb.updateDoc(fb.doc(fb.db,'entries',item.existingId), {
+          ...payload, submittedAt: fb.serverTimestamp()
+        });
+      } else {
+        const q=fb.query(fb.collection(fb.db,'entries'),
+          fb.where('ward','==',payload.ward),fb.where('date','==',payload.date));
+        const snap=await fb.getDocs(q);
+        if(!snap.empty){
+          await fb.updateDoc(fb.doc(fb.db,'entries',snap.docs[0].id), {
+            ...payload, submittedAt: fb.serverTimestamp()
+          });
+        } else {
+          await fb.addDoc(fb.collection(fb.db,'entries'), {
+            ...payload, submittedAt: fb.serverTimestamp()
+          });
+        }
+      }
+      await idbDelete(STORE_QUEUE, qid);
+      synced++;
+    } catch(err){
+      console.error('Sync failed for item', qid, err.message);
+      failed++;
+    }
+  }
+
+  await idbClear(STORE_CACHE); // Firestore is now source of truth
+  await updatePendingBadge();
+  updateOnlineStatus();
+
+  if(failed===0){
+    showToast(`✓ Synced ${synced} entry(ies) to Firestore.`);
+  } else {
+    showToast(`Synced ${synced}, failed ${failed}. Check connection.`,'warn');
+  }
+};
+
+/* ── Load local cache into ENTRIES when offline ── */
+async function loadOfflineCache(){
+  try{
+    const cached = await idbGetAll(STORE_CACHE);
+    if(cached.length){
+      cached.forEach(item=>{
+        const idx=ENTRIES.findIndex(e=>e.ward===item.ward&&e.date===item.date);
+        if(idx>=0) ENTRIES[idx]={...ENTRIES[idx],...item};
+        else        ENTRIES.push({...item, id:item.localKey||'cached_'+Date.now()});
+      });
+      console.log(`Loaded ${cached.length} entries from local cache.`);
+    }
+  } catch(e){ console.warn('loadOfflineCache:', e.message); }
+}
+
+/* ── Patch submitEntry to use writeEntry ── */
+const _origSubmitEntry = window.submitEntry;
+window.submitEntry = async function(){
+  const wc=currentUser.ward, meta=WBC[wc];
+  if(!meta){showToast('No ward assigned.','error');return;}
+  const g = id => parseInt(document.getElementById(id)?.value)||0;
+  const pat=g('fe-pat'),adm=g('fe-adm'),dis=g('fe-dis'),tin=g('fe-tin'),tout=g('fe-tout');
+  const mort=meta.hasMortality?g('fe-mort'):0, absc=meta.hasAbsconded?g('fe-absc'):0;
+  const empty=Math.max(0,meta.beds-pat), bor=meta.beds>0?pat/meta.beds*100:0;
+  const isCritical=mort>=2||absc>0||bor>=100, date=today();
+  const btn=document.getElementById('btn-submit');
+  btn.disabled=true; btn.textContent=isOnline?'Submitting…':'Saving locally…';
+
+  const payload={
+    ward:wc,wardName:meta.name,date,beds:meta.beds,
+    patients:pat,admissions:adm,discharges:dis,transferIn:tin,transferOut:tout,
+    mortality:mort,absconded:absc,empty,bor,isCritical,
+    submittedBy:currentUser.fullName||currentUser.username,
+  };
+
+  try{
+    const result = await writeEntry(payload, null);
+    if(result.synced){
+      showToast('✓ Entry submitted to server.');
+    } else {
+      showToast('📥 Saved locally — will sync when online.','warn');
+    }
+    document.getElementById('e-status').textContent=
+      (result.synced?'Submitted':'Saved offline')+' at '+
+      new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    renderEntryHistory();
+  } catch(err){ showToast('Error: '+err.message,'error'); }
+  finally{ btn.disabled=false; btn.textContent='✓ Submit Today's Entry'; }
+};
+
+/* ── Patch saveDayEntry to use writeEntry ── */
+window.saveDayEntry = async function(dateStr, wc, existingId){
+  const meta=WBC[wc]; if(!meta){showToast('Ward not found.','error');return;}
+  const g = id => parseInt(document.getElementById(id)?.value)||0;
+  const pat=g('dm-pat'),adm=g('dm-adm'),dis=g('dm-dis'),tin=g('dm-tin'),tout=g('dm-tout');
+  const mort=meta.hasMortality?g('dm-mort'):0, absc=meta.hasAbsconded?g('dm-absc'):0;
+  const empty=Math.max(0,meta.beds-pat), bor=meta.beds>0?pat/meta.beds*100:0;
+  const isCritical=mort>=2||absc>0||bor>=100;
+
+  const payload={
+    ward:wc,wardName:meta.name,date:dateStr,beds:meta.beds,
+    patients:pat,admissions:adm,discharges:dis,transferIn:tin,transferOut:tout,
+    mortality:mort,absconded:absc,empty,bor,isCritical,
+    submittedBy:currentUser.fullName||currentUser.username,
+  };
+
+  try{
+    const result=await writeEntry(payload, existingId||null);
+    if(result.synced){
+      showToast('✓ Entry saved for '+dateStr);
+    } else {
+      showToast('📥 Saved locally for '+dateStr+' — will sync when online.','warn');
+    }
+    closeModal(); renderCalendar();
+  } catch(err){ showToast('Error: '+err.message,'error'); }
+};
+
+/* ── Initialise offline support after login ── */
+const _origAfterLogin = afterLogin;
+// Wrap afterLogin to also init offline cache + status
+const __baseAfterLogin = afterLogin;
+window.__initOffline = async function(){
+  await openIDB();
+  updateOnlineStatus();
+  await updatePendingBadge();
+  if(!isOnline) await loadOfflineCache();
 };
 
 /* ══ ENTER KEY on login ══ */
